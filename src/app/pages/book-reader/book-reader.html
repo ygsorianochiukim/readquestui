@@ -1,0 +1,99 @@
+<a class="mapback" routerLink="/student/library" aria-label="Back to library">←</a>
+
+<app-alert [message]="errorMessage()" variant="error" />
+
+@if (loading()) {
+  <app-spinner label="Opening your book…" />
+} @else if (total() === 0) {
+  <app-empty-state
+    icon="📖"
+    title="Nothing to read yet"
+    message="This book doesn't have any pages yet. Check back with your teacher." />
+} @else {
+  <div class="reader">
+    <!-- The open book. Re-keyed on the page index so the flip plays each turn. -->
+    <div class="book" [class.book--next]="turnDirection() === 'next'" [class.book--prev]="turnDirection() === 'prev'">
+      @for (leaf of [current()]; track index()) {
+        <div class="book__spread">
+          <div class="book__page book__page--single">
+            <div class="book__page-inner">
+              <p class="book__label">{{ leaf?.label }}</p>
+              @if (leaf?.text) {
+                <p class="book__text">{{ leaf?.text }}</p>
+              } @else {
+                <p class="book__empty">This page has no words yet.</p>
+              }
+              <span class="book__folio">{{ index() + 1 }}</span>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="reader__controls">
+      <app-button variant="secondary" [disabled]="index() === 0" (clicked)="previous()">
+        ← Previous
+      </app-button>
+
+      <app-button (clicked)="toggleNarration()">
+        @if (narrationLoading()) {
+          Loading…
+        } @else if (narrating()) {
+          ⏸ Stop
+        } @else {
+          🔊 Read aloud
+        }
+      </app-button>
+
+      <app-button variant="secondary" [disabled]="index() === total() - 1" (clicked)="next()">
+        Next →
+      </app-button>
+    </div>
+
+    <p class="reader__progress">{{ current()?.label }} · {{ index() + 1 }} of {{ total() }}</p>
+
+    @if (current()?.text) {
+      <div class="reader__record">
+        <app-button [disabled]="recordingState() === 'assessing'" (clicked)="toggleRecording()">
+          @if (recordingState() === 'recording') {
+            ⏹ Stop &amp; check my reading
+          } @else if (recordingState() === 'assessing') {
+            Checking your reading…
+          } @else {
+            🎤 Read this page aloud
+          }
+        </app-button>
+        @if (recordingState() === 'recording') {
+          <span class="reader__recording">● Recording… read the page out loud</span>
+        }
+      </div>
+    }
+
+    @if (result(); as attempt) {
+      <div class="reader__result">
+        <h3 class="reader__result-title">Nice reading! Here's how you did:</h3>
+        <div class="reader__scores">
+          <div class="score score--{{ scoreTone(attempt.pron_score) }}">
+            <span class="score__value">{{ (attempt.pron_score ?? 0).toFixed(0) }}</span>
+            <span class="score__label">Overall</span>
+          </div>
+          <div class="score score--{{ scoreTone(attempt.accuracy_score) }}">
+            <span class="score__value">{{ (attempt.accuracy_score ?? 0).toFixed(0) }}</span>
+            <span class="score__label">Accuracy</span>
+          </div>
+          <div class="score score--{{ scoreTone(attempt.fluency_score) }}">
+            <span class="score__value">{{ (attempt.fluency_score ?? 0).toFixed(0) }}</span>
+            <span class="score__label">Fluency</span>
+          </div>
+          <div class="score score--{{ scoreTone(attempt.completeness_score) }}">
+            <span class="score__value">{{ (attempt.completeness_score ?? 0).toFixed(0) }}</span>
+            <span class="score__label">Completeness</span>
+          </div>
+        </div>
+        @if (attempt.recognized_text) {
+          <p class="reader__heard">We heard: “{{ attempt.recognized_text }}”</p>
+        }
+      </div>
+    }
+  </div>
+}

@@ -1,0 +1,121 @@
+<div class="hub">
+  <div class="hub__hello">
+    <h1 class="hub__title">Hi {{ firstName() }}! <span class="hub__wave">👋</span></h1>
+    <p class="hub__subtitle">Ready for today's reading quest?</p>
+  </div>
+
+  @if (loading()) {
+    <app-spinner label="Loading your adventure…" />
+  } @else {
+    <!-- World scene -->
+    <section class="world">
+      <div class="world__scene">
+        <div class="world__banner">
+          <p class="world__place">{{ continueBook()?.title || 'Reading World' }}</p>
+          <p class="world__sub">{{ continueBook()?.reading_level || 'Your adventure awaits' }}</p>
+        </div>
+
+        <div class="world__mascot">
+          <span class="world__bubble">Let's read! 📖</span>
+          <span class="world__buddy">🦉</span>
+        </div>
+
+        <div class="world__level"><span>LEVEL</span> <b>{{ playerLevel() }}</b></div>
+
+        @if (continueBook(); as book) {
+          <button type="button" class="world__play" (click)="enterWorld()">
+            <span class="world__play-ic">▶</span>
+            {{ book.percent > 0 ? 'Keep Reading' : 'Start' }}
+            <span class="world__play-bar"><span [style.width.%]="book.percent"></span></span>
+          </button>
+        } @else if (books().length > 0) {
+          <div class="world__done">🏆 All quests complete!</div>
+        } @else {
+          <button type="button" class="world__play" (click)="goLibrary()">
+            <span class="world__play-ic">▶</span> Open the Map
+          </button>
+        }
+      </div>
+
+      <!-- Weekly quests panel (floats over the scene on desktop) -->
+      <aside class="wq">
+        <p class="wq__title">🎯 Weekly Quests <span class="wq__count">{{ questsDone() }}/{{ quests().length }}</span></p>
+        <ul class="wq__list">
+          @for (quest of quests(); track quest.label) {
+            <li class="wq__item" [class.wq__item--done]="quest.done">
+              <span class="wq__check">{{ quest.done ? '✓' : quest.icon }}</span>
+              <span class="wq__label">{{ quest.label }}</span>
+            </li>
+          }
+        </ul>
+      </aside>
+    </section>
+
+    <!-- Player stats -->
+    <div class="tiles">
+      <div class="tile tile--coins">
+        <span class="tile__icon">⭐</span>
+        <span class="tile__value">{{ points() }}</span>
+        <span class="tile__label">Points</span>
+      </div>
+      <div class="tile tile--books">
+        <span class="tile__icon">📚</span>
+        <span class="tile__value">{{ completedBooks() }}/{{ books().length }}</span>
+        <span class="tile__label">Books</span>
+      </div>
+      <div class="tile tile--badges">
+        <span class="tile__icon">🏅</span>
+        <span class="tile__value">{{ badges().length }}</span>
+        <span class="tile__label">Badges</span>
+      </div>
+      <div class="tile tile--progress">
+        <span class="tile__icon">🎯</span>
+        <span class="tile__value">{{ overallPercent() }}%</span>
+        <span class="tile__label">Progress</span>
+      </div>
+    </div>
+
+    <!-- Quests / books -->
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">🗺️ Your Quests</h2>
+        <app-button variant="ghost" (clicked)="goLibrary()">Open map →</app-button>
+      </div>
+      @if (books().length === 0) {
+        <p class="panel__empty">Your teacher hasn't assigned any books yet. Check back soon!</p>
+      } @else {
+        <div class="quests">
+          @for (book of books(); track book.id) {
+            <button
+              type="button"
+              class="mini"
+              [class.mini--locked]="book.is_locked"
+              [class.mini--done]="book.is_completed"
+              (click)="openBook(book)">
+              <span class="mini__icon">{{ book.is_locked ? '🔒' : (book.is_completed ? '✅' : '📖') }}</span>
+              <span class="mini__title">{{ book.title }}</span>
+              <span class="mini__pct">{{ book.is_locked ? 'Locked' : book.percent + '%' }}</span>
+            </button>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Treasure / badges -->
+    <section class="panel">
+      <h2 class="panel__title">🏅 My Treasure</h2>
+      @if (badges().length === 0) {
+        <p class="panel__empty">No badges yet — keep reading to earn your first one!</p>
+      } @else {
+        <div class="treasure">
+          @for (badge of badges(); track badge.id) {
+            <div class="treasure__item" [title]="badge.description || badge.name">
+              <span class="treasure__icon">{{ badge.icon || '🏅' }}</span>
+              <span class="treasure__name">{{ badge.name }}</span>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

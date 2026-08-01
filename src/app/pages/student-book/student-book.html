@@ -1,0 +1,59 @@
+@if (loading()) {
+  <app-spinner label="Opening your book…" />
+} @else if (!book()) {
+  <app-empty-state icon="📕" title="Book not found" message="This book isn't available right now." />
+} @else {
+  <!-- Minimal floating back button (no heavy header) -->
+  <button type="button" class="mapback" (click)="back()" aria-label="Back to library">←</button>
+
+  @if (chapters().length === 0) {
+    <app-empty-state
+      icon="🗺️"
+      title="No levels yet"
+      message="Your teacher hasn't added chapters to this adventure." />
+  } @else {
+    <div class="worldmap" [style.height.px]="worldHeight()">
+      <span class="worldmap__flag" aria-hidden="true">🏁</span>
+
+      <svg class="worldmap__trail" [attr.viewBox]="viewBox()" preserveAspectRatio="none" aria-hidden="true">
+        <path class="worldmap__edge" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
+        <path class="worldmap__road" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
+        <path class="worldmap__stripes" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
+      </svg>
+
+      @for (node of levels(); track node.chapter.id) {
+        <div class="spot spot--{{ node.state }}" [style.left.%]="node.xPercent" [style.top.px]="node.yPx">
+          @if (node.state === 'current') {
+            <span class="spot__buddy" aria-hidden="true">🦉</span>
+          }
+
+          <button
+            type="button"
+            class="spot__node"
+            [disabled]="node.state === 'locked'"
+            [attr.aria-label]="'Level ' + node.level + ': ' + node.chapter.title"
+            (click)="open(node.chapter)">
+            @if (node.state === 'locked') {
+              <span class="spot__icon">🔒</span>
+            } @else if (node.state === 'completed') {
+              <span class="spot__icon">⭐</span>
+            } @else {
+              <span class="spot__num">{{ node.level }}</span>
+            }
+          </button>
+
+          <div class="spot__card">
+            <p class="spot__name">{{ node.chapter.title }}</p>
+            @if (node.state === 'locked') {
+              <p class="spot__hint">🔒 Locked</p>
+            } @else if (node.state === 'completed') {
+              <p class="spot__hint spot__hint--done">Completed!</p>
+            } @else {
+              <p class="spot__hint">Tap to play</p>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+}

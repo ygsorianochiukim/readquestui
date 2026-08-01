@@ -1,0 +1,55 @@
+@if (loading()) {
+  <app-spinner label="Loading your adventure…" />
+} @else if (books().length === 0) {
+  <app-empty-state
+    icon="📚"
+    title="No books yet"
+    message="Your teacher hasn't assigned any books to you yet. Check back soon!" />
+} @else {
+  <!-- The scrollable adventure world -->
+  <div class="worldmap" [style.height.px]="worldHeight()">
+    <!-- Checkered goal flag at the top of the path -->
+    <span class="worldmap__flag" aria-hidden="true">🏁</span>
+
+    <!-- The candy road -->
+    <svg class="worldmap__trail" [attr.viewBox]="viewBox()" preserveAspectRatio="none" aria-hidden="true">
+      <path class="worldmap__edge" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
+      <path class="worldmap__road" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
+      <path class="worldmap__stripes" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
+    </svg>
+
+    @for (node of levels(); track node.book.id) {
+      <div class="spot spot--{{ node.state }}" [style.left.%]="node.xPercent" [style.top.px]="node.yPx">
+        @if (node.state === 'current') {
+          <span class="spot__buddy" aria-hidden="true">🦉</span>
+        }
+
+        <button
+          type="button"
+          class="spot__node"
+          [disabled]="node.state === 'locked'"
+          [attr.aria-label]="'Level ' + node.level + ': ' + node.book.title"
+          (click)="open(node.book)">
+          @if (node.state === 'locked') {
+            <span class="spot__icon">🔒</span>
+          } @else if (node.state === 'completed') {
+            <span class="spot__icon">⭐</span>
+          } @else {
+            <span class="spot__num">{{ node.level }}</span>
+          }
+        </button>
+
+        <div class="spot__card">
+          <p class="spot__name">{{ node.book.title }}</p>
+          @if (node.state === 'locked') {
+            <p class="spot__hint">🔒 Locked</p>
+          } @else if (node.state === 'completed') {
+            <p class="spot__hint spot__hint--done">Completed!</p>
+          } @else {
+            <p class="spot__hint">{{ node.book.percent }}%</p>
+          }
+        </div>
+      </div>
+    }
+  </div>
+}

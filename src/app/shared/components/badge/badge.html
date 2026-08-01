@@ -1,0 +1,9 @@
+<span
+  class="badge"
+  [class.badge--neutral]="tone() === 'neutral'"
+  [class.badge--success]="tone() === 'success'"
+  [class.badge--warning]="tone() === 'warning'"
+  [class.badge--danger]="tone() === 'danger'"
+  [class.badge--primary]="tone() === 'primary'">
+  {{ label() }}
+</span>

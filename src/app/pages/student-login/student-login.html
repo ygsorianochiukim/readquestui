@@ -1,0 +1,33 @@
+<div class="student-login">
+  <div class="student-login__card">
+    <div class="student-login__brand">
+      <img src="/Readquest.png" alt="ReadQuest" class="student-login__logo" />
+      <p class="student-login__subtitle">Ready for your reading adventure?</p>
+    </div>
+
+    <app-alert [message]="errorMessage()" variant="error" />
+
+    <form class="student-login__form" (ngSubmit)="submit()">
+      <app-form-field label="Username">
+        <input name="username" [(ngModel)]="form.username" autocomplete="username" required />
+      </app-form-field>
+
+      <app-form-field label="Password">
+        <input
+          type="password"
+          name="password"
+          [(ngModel)]="form.password"
+          autocomplete="current-password"
+          required />
+      </app-form-field>
+
+      <app-button type="submit" [block]="true" [disabled]="loading()">
+        {{ loading() ? 'Please wait…' : 'Start Reading' }}
+      </app-button>
+    </form>
+
+    <p class="student-login__hint">Ask your teacher for your username and password.</p>
+
+    <a class="student-login__teacher" routerLink="/login">I'm a teacher →</a>
+  </div>
+</div>

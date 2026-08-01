@@ -1,0 +1,9 @@
+// =============================================================
+//  Global stylesheet
+//  Loads the design tokens and base styles for the whole app.
+//  Component-specific styles live next to each component (.scss).
+// =============================================================
+
+@use 'tokens';
+@use 'base';
+@use 'cards';

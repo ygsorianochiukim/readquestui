@@ -1,0 +1,119 @@
+// =============================================================
+//  Entity card
+//  Shared card layout used for books, badges and similar items:
+//  thumbnail + title + sub-header, a full-width action bar, and
+//  an Update | Remove footer. Global so every list looks the same.
+// =============================================================
+
+@use 'abstracts' as *;
+
+.entity-card {
+  @include card;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  &__thumb {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__thumb-fallback {
+    font-size: 2rem;
+  }
+
+  &__heading {
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: var(--font-size-lg);
+    @include clamp-lines(1);
+  }
+
+  &__subheader {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-base);
+    @include clamp-lines(1);
+  }
+
+  // Full-width blue action bar (a link on books, a static banner elsewhere).
+  &__bar {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: var(--color-sidebar);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover {
+      filter: brightness(0.97);
+      text-decoration: none;
+    }
+
+    &--static {
+      cursor: default;
+
+      &:hover {
+        filter: none;
+      }
+    }
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+  }
+
+  &__action {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+    padding: var(--space-1) var(--space-2);
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &--danger {
+      color: var(--color-danger);
+    }
+  }
+
+  &__divider {
+    width: 1px;
+    height: 1.1rem;
+    background: var(--color-border);
+  }
+}

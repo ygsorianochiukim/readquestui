@@ -1,0 +1,72 @@
+// =============================================================
+//  Mixins
+//  Small reusable style recipes. Use them in component SCSS with:
+//    @use 'abstracts' as *;
+//    .my-card { @include card; }
+// =============================================================
+
+@use 'variables' as *;
+
+// A white, rounded, softly shadowed panel — the base of most UI.
+@mixin card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+// A visible, accessible focus outline for keyboard users.
+@mixin focus-ring($color: var(--color-primary)) {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(109, 94, 252, 0.25);
+  border-color: $color;
+}
+
+// Shared look for text inputs, selects and textareas.
+@mixin form-control {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.85rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &::placeholder {
+    color: var(--color-text-soft);
+  }
+
+  &:focus {
+    @include focus-ring;
+  }
+
+  &:disabled {
+    background: var(--color-background);
+    cursor: not-allowed;
+  }
+}
+
+// Apply styles from a given breakpoint upwards.
+//   @include respond-to(md) { ... }
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == sm {
+    @media (min-width: $breakpoint-sm) { @content; }
+  } @else if $breakpoint == md {
+    @media (min-width: $breakpoint-md) { @content; }
+  } @else if $breakpoint == lg {
+    @media (min-width: $breakpoint-lg) { @content; }
+  } @else if $breakpoint == xl {
+    @media (min-width: $breakpoint-xl) { @content; }
+  }
+}
+
+// Truncate text to a number of lines.
+@mixin clamp-lines($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

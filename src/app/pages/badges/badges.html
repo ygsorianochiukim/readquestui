@@ -1,0 +1,86 @@
+<div class="page-actions">
+  <app-button (clicked)="openCreateForm()">+ Add Badge</app-button>
+</div>
+
+<app-alert [message]="errorMessage()" variant="error" />
+
+@if (loading()) {
+  <app-spinner label="Loading badges…" />
+} @else if (badges().length === 0) {
+  <app-empty-state
+    icon="🏅"
+    title="No badges yet"
+    message="Create badges like “Bookworm” or “Quiz Master” to reward your pupils.">
+    <app-button (clicked)="openCreateForm()">+ Add Badge</app-button>
+  </app-empty-state>
+} @else {
+  <div class="badge-grid">
+    @for (badge of badges(); track badge.id) {
+      <article class="entity-card">
+        <div class="entity-card__head">
+          <div class="entity-card__thumb">
+            <span class="entity-card__thumb-fallback">{{ badge.icon || '🏅' }}</span>
+          </div>
+          <div class="entity-card__heading">
+            <h3 class="entity-card__title">{{ badge.name }}</h3>
+            <p class="entity-card__subheader">{{ badge.criteria || badge.description || 'Reward badge' }}</p>
+          </div>
+        </div>
+
+        <div class="entity-card__bar entity-card__bar--static">⭐ {{ badge.points }} points</div>
+
+        <div class="entity-card__footer">
+          <button type="button" class="entity-card__action" (click)="openEditForm(badge)">Update</button>
+          <span class="entity-card__divider"></span>
+          <button
+            type="button"
+            class="entity-card__action entity-card__action--danger"
+            (click)="deleteBadge(badge)">
+            Remove
+          </button>
+        </div>
+      </article>
+    }
+  </div>
+}
+
+<app-modal
+  [open]="isFormOpen()"
+  [title]="editingBadgeId() ? 'Edit Badge' : 'New Badge'"
+  (closed)="closeForm()">
+  <form class="form-grid" (ngSubmit)="saveBadge()">
+    <app-form-field label="Name">
+      <input name="name" [(ngModel)]="badgeForm.name" required />
+    </app-form-field>
+
+    <app-form-field label="Icon (emoji)" hint="For example: 🏅">
+      <input name="icon" [(ngModel)]="badgeForm.icon" />
+    </app-form-field>
+
+    <app-form-field class="form-grid__full" label="Description">
+      <textarea name="description" [(ngModel)]="badgeForm.description" rows="2"></textarea>
+    </app-form-field>
+
+    <app-form-field label="Points">
+      <input type="number" name="points" [(ngModel)]="badgeForm.points" min="0" />
+    </app-form-field>
+
+    <app-form-field label="Status">
+      <select name="status" [(ngModel)]="badgeForm.status">
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </app-form-field>
+
+    <app-form-field class="form-grid__full" label="How it is earned (criteria)">
+      <input name="criteria" [(ngModel)]="badgeForm.criteria" />
+    </app-form-field>
+  </form>
+
+  <div footer>
+    <app-button variant="secondary" (clicked)="closeForm()">Cancel</app-button>
+    <app-button [disabled]="saving()" (clicked)="saveBadge()">
+      {{ saving() ? 'Saving…' : 'Save Badge' }}
+    </app-button>
+  </div>
+</app-modal>

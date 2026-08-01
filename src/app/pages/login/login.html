@@ -1,0 +1,70 @@
+<div class="login">
+  <div class="login__card">
+    <div class="login__brand">
+      <img src="/Readquest.png" alt="ReadQuest" class="login__logo" />
+      <p class="login__subtitle">Teacher Portal</p>
+    </div>
+
+    <div class="login__tabs">
+      <button
+        type="button"
+        class="login__tab"
+        [class.login__tab--active]="mode() === 'login'"
+        (click)="setMode('login')">
+        Log In
+      </button>
+      <button
+        type="button"
+        class="login__tab"
+        [class.login__tab--active]="mode() === 'register'"
+        (click)="setMode('register')">
+        Create Account
+      </button>
+    </div>
+
+    <app-alert [message]="errorMessage()" variant="error" />
+
+    <form class="login__form" (ngSubmit)="submit()">
+      @if (mode() === 'register') {
+        <div class="login__row">
+          <app-form-field label="First name">
+            <input name="first_name" [(ngModel)]="form.first_name" required />
+          </app-form-field>
+          <app-form-field label="Last name">
+            <input name="last_name" [(ngModel)]="form.last_name" required />
+          </app-form-field>
+        </div>
+
+        <app-form-field label="Phone (optional)">
+          <input name="phone_number" [(ngModel)]="form.phone_number" />
+        </app-form-field>
+      }
+
+      <app-form-field label="Email">
+        <input type="email" name="email" [(ngModel)]="form.email" required />
+      </app-form-field>
+
+      <app-form-field label="Password">
+        <input type="password" name="password" [(ngModel)]="form.password" required />
+      </app-form-field>
+
+      @if (mode() === 'register') {
+        <app-form-field label="Confirm password">
+          <input
+            type="password"
+            name="password_confirmation"
+            [(ngModel)]="form.password_confirmation"
+            required />
+        </app-form-field>
+      }
+
+      <app-button type="submit" [block]="true" [disabled]="loading()">
+        {{ loading() ? 'Please wait…' : mode() === 'login' ? 'Log In' : 'Create Account' }}
+      </app-button>
+    </form>
+
+    @if (mode() === 'login') {
+      <p class="login__hint">Demo account: teacher&#64;readquest.test / password</p>
+    }
+  </div>
+</div>

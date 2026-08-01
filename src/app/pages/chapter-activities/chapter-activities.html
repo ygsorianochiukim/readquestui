@@ -1,0 +1,184 @@
+@if (loading()) {
+  <app-spinner label="Opening the chapter…" />
+} @else {
+  <div class="qa">
+    <div class="qa__head">
+      <button type="button" class="qa__back" (click)="finish()">← Back to book</button>
+      <p class="qa__eyebrow">Chapter {{ chapterNumber() }} · Quest</p>
+      <h1 class="qa__title">{{ title() }}</h1>
+    </div>
+
+    @if (completed()) {
+      <app-alert variant="success" message="🎉 Quest complete! You can replay any stage below." />
+    }
+    <app-alert [message]="errorMessage()" />
+
+    <!-- Stage track -->
+    <nav class="track">
+      @for (step of steps(); track step.key; let i = $index) {
+        @if (i > 0) {
+          <span class="track__link" [class.track__link--done]="steps()[i - 1].done"></span>
+        }
+        <button
+          type="button"
+          class="track__stage"
+          [class.track__stage--active]="activeStep() === step.key"
+          [class.track__stage--done]="step.done"
+          (click)="go(step.key)">
+          <span class="track__bubble">{{ step.done ? '✓' : step.icon }}</span>
+          <span class="track__label">{{ step.label }}</span>
+        </button>
+      }
+    </nav>
+
+    <div class="stage">
+      <!-- STORY -->
+      @if (activeStep() === 'story') {
+        <div class="act">
+          <div class="act__bar">
+            <h2 class="act__title">📖 Read the story</h2>
+            <app-button variant="secondary" (clicked)="toggleNarration()">
+              {{ narrating() ? '⏹ Stop' : (narrationLoading() ? 'Loading…' : '🔊 Listen') }}
+            </app-button>
+          </div>
+          @if (imageUrl()) {
+            <img class="act__image" [src]="imageUrl()" [alt]="title()" />
+          }
+          @if (storyText()) {
+            <p class="act__story">{{ storyText() }}</p>
+          } @else {
+            <p class="act__muted">This chapter has no story text yet.</p>
+          }
+          <div class="act__actions">
+            <app-button (clicked)="markStoryRead()">
+              {{ storyRead() ? 'Read again — continue →' : "I've read it →" }}
+            </app-button>
+          </div>
+        </div>
+      }
+
+      <!-- READ ALOUD -->
+      @if (activeStep() === 'readaloud') {
+        <div class="act">
+          <h2 class="act__title">🎤 Read it aloud</h2>
+          <p class="act__muted">Press record, read the story out loud, then stop to get your score.</p>
+          @if (storyText()) {
+            <p class="act__story act__story--compact">{{ storyText() }}</p>
+          }
+
+          <div class="act__actions">
+            <app-button
+              [variant]="recordingState() === 'recording' ? 'danger' : 'primary'"
+              [disabled]="recordingState() === 'assessing'"
+              (clicked)="toggleRecording()">
+              @if (recordingState() === 'idle') {
+                🎙️ Start recording
+              } @else if (recordingState() === 'recording') {
+                ⏹ Stop & score
+              } @else {
+                Scoring…
+              }
+            </app-button>
+          </div>
+
+          @if (result(); as attempt) {
+            <div class="scores">
+              <div class="score score--{{ scoreTone(attempt.pron_score) }}">
+                <span class="score__value">{{ attempt.pron_score ?? 0 }}</span>
+                <span class="score__label">Overall</span>
+              </div>
+              <div class="score">
+                <span class="score__value">{{ attempt.accuracy_score ?? 0 }}</span>
+                <span class="score__label">Accuracy</span>
+              </div>
+              <div class="score">
+                <span class="score__value">{{ attempt.fluency_score ?? 0 }}</span>
+                <span class="score__label">Fluency</span>
+              </div>
+              <div class="score">
+                <span class="score__value">{{ attempt.completeness_score ?? 0 }}</span>
+                <span class="score__label">Complete</span>
+              </div>
+            </div>
+            @if (attempt.recognized_text) {
+              <p class="act__muted">We heard: “{{ attempt.recognized_text }}”</p>
+            }
+          }
+
+          @if (pronunciationPassed()) {
+            <div class="act__actions">
+              <app-alert variant="success" message="Great reading! ✅" />
+              <app-button (clicked)="go('game')">Continue →</app-button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- GAME -->
+      @if (activeStep() === 'game') {
+        <div class="act">
+          <h2 class="act__title">🎮 Word game</h2>
+          <app-word-scramble
+            [words]="gameWords()"
+            [alreadyDone]="gameCompleted()"
+            (completed)="onGameCompleted()" />
+          @if (gameCompleted()) {
+            <div class="act__actions">
+              <app-button (clicked)="go('quiz')">Continue to quiz →</app-button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- QUIZ -->
+      @if (activeStep() === 'quiz') {
+        <div class="act">
+          <h2 class="act__title">🧠 Chapter quiz</h2>
+
+          @if (quizQuestions().length === 0) {
+            <p class="act__muted">This chapter has no quiz. You can finish it now!</p>
+            <div class="act__actions">
+              <app-button (clicked)="submitQuiz()">Complete chapter →</app-button>
+            </div>
+          } @else if (quizResult(); as res) {
+            <div class="quiz-result">
+              <span class="quiz-result__score" [class.quiz-result__score--pass]="res.passed">
+                {{ res.score }}%
+              </span>
+              <p>You got {{ res.correct }} of {{ res.total }} correct.</p>
+              @if (res.passed) {
+                <app-alert variant="success" message="You passed the quiz! 🎉" />
+                <app-button (clicked)="finish()">Finish chapter →</app-button>
+              } @else {
+                <app-alert message="You need 70% to pass. Give it another try!" variant="info" />
+                <app-button (clicked)="retryQuiz()">Try again</app-button>
+              }
+            </div>
+          } @else {
+            <div class="quiz">
+              @for (question of quizQuestions(); track question.id; let qi = $index) {
+                <div class="quiz__q">
+                  <p class="quiz__prompt">{{ qi + 1 }}. {{ question.question_text }}</p>
+                  <div class="quiz__choices">
+                    @for (choice of question.choices; track choice) {
+                      <button
+                        type="button"
+                        class="quiz__choice"
+                        [class.quiz__choice--picked]="isChosen(question.id, choice)"
+                        (click)="choose(question.id, choice)">
+                        {{ choice }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+              <div class="act__actions">
+                <app-button (clicked)="submitQuiz()">Submit answers</app-button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}

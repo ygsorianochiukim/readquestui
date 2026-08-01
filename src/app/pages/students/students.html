@@ -1,0 +1,219 @@
+<div class="page-actions">
+  <app-button (clicked)="openCreateForm()">+ Add Student</app-button>
+</div>
+
+<app-alert [message]="errorMessage()" variant="error" />
+
+<app-card>
+  @if (loading()) {
+    <app-spinner label="Loading students…" />
+  } @else if (students().length === 0) {
+    <app-empty-state
+      icon="🧒"
+      title="No students yet"
+      message="Add your first pupil to start tracking their reading journey.">
+      <app-button (clicked)="openCreateForm()">+ Add Student</app-button>
+    </app-empty-state>
+  } @else {
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Username</th>
+            <th>Reading level</th>
+            <th>Points</th>
+            <th>Status</th>
+            <th class="table__right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (student of students(); track student.id) {
+            <tr>
+              <td class="table__strong">{{ student.first_name }} {{ student.last_name }}</td>
+              <td>{{ student.username }}</td>
+              <td>{{ student.reading_level || '—' }}</td>
+              <td>⭐ {{ student.points ?? 0 }}</td>
+              <td>
+                <app-badge
+                  [label]="student.status"
+                  [tone]="student.status === 'active' ? 'success' : 'neutral'" />
+              </td>
+              <td class="table__right">
+                <app-action-menu
+                  [items]="rowActions"
+                  (selected)="handleAction($event, student)" />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</app-card>
+
+<app-modal
+  [open]="isFormOpen()"
+  [title]="editingStudentId() ? 'Edit Student' : 'New Student'"
+  (closed)="closeForm()">
+  <form id="student-form" class="form-grid" (ngSubmit)="saveStudent()">
+    <app-form-field label="First name">
+      <input name="first_name" [(ngModel)]="studentForm.first_name" required />
+    </app-form-field>
+
+    <app-form-field label="Last name">
+      <input name="last_name" [(ngModel)]="studentForm.last_name" required />
+    </app-form-field>
+
+    <app-form-field label="Username">
+      <input name="username" [(ngModel)]="studentForm.username" required />
+    </app-form-field>
+
+    <app-form-field label="Reading level" hint="For example: Level 1">
+      <input name="reading_level" [(ngModel)]="studentForm.reading_level" />
+    </app-form-field>
+
+    <app-form-field
+      [label]="editingStudentId() ? 'Password (leave blank to keep)' : 'Password'">
+      <input
+        type="password"
+        name="password"
+        [(ngModel)]="studentForm.password"
+        [required]="!editingStudentId()" />
+    </app-form-field>
+
+    <app-form-field label="Status">
+      <select name="status" [(ngModel)]="studentForm.status">
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </app-form-field>
+  </form>
+
+  <div footer>
+    <app-button variant="secondary" (clicked)="closeForm()">Cancel</app-button>
+    <app-button [disabled]="saving()" (clicked)="saveStudent()">
+      {{ saving() ? 'Saving…' : 'Save Student' }}
+    </app-button>
+  </div>
+</app-modal>
+
+<app-modal
+  [open]="isRewardsOpen()"
+  [title]="'Rewards — ' + (rewardsStudent()?.first_name ?? '')"
+  (closed)="closeRewards()">
+  <div class="rewards">
+    <div class="rewards__points">
+      <span class="rewards__points-value">⭐ {{ rewardsPoints() }}</span>
+      <span class="rewards__points-label">total points</span>
+    </div>
+
+    @if (rewardsLoading()) {
+      <app-spinner label="Loading badges…" />
+    } @else if (allBadges().length === 0) {
+      <p class="rewards__empty">No badges exist yet. Create some on the Badges page first.</p>
+    } @else {
+      <ul class="rewards__list">
+        @for (badge of allBadges(); track badge.id) {
+          <li class="rewards__item" [class.rewards__item--earned]="isEarned(badge.id)">
+            <span class="rewards__icon">{{ badge.icon || '🏅' }}</span>
+            <div class="rewards__info">
+              <p class="rewards__name">{{ badge.name }}</p>
+              <p class="rewards__meta">{{ badge.points }} pts</p>
+            </div>
+            <app-button
+              [variant]="isEarned(badge.id) ? 'secondary' : 'primary'"
+              [disabled]="busyBadgeId() === badge.id"
+              (clicked)="toggleBadge(badge)">
+              {{ isEarned(badge.id) ? 'Remove' : 'Award' }}
+            </app-button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <div footer>
+    <app-button variant="secondary" (clicked)="closeRewards()">Done</app-button>
+  </div>
+</app-modal>
+
+<app-modal
+  [open]="isScoresOpen()"
+  [title]="'Pronunciation — ' + (scoresStudent()?.first_name ?? '')"
+  (closed)="closeScores()">
+  <div class="scores">
+    @if (scoresLoading()) {
+      <app-spinner label="Loading attempts…" />
+    } @else if (attempts().length === 0) {
+      <p class="scores__empty">No read-aloud attempts yet. Attempts appear here once the pupil records a reading.</p>
+    } @else {
+      @for (attempt of attempts(); track attempt.id) {
+        <div class="scores__item">
+          <div class="scores__row">
+            <span class="scores__overall">{{ (attempt.pron_score ?? 0).toFixed(0) }}</span>
+            <div class="scores__detail">
+              <span>Accuracy {{ (attempt.accuracy_score ?? 0).toFixed(0) }}</span>
+              <span>Fluency {{ (attempt.fluency_score ?? 0).toFixed(0) }}</span>
+              <span>Completeness {{ (attempt.completeness_score ?? 0).toFixed(0) }}</span>
+            </div>
+            @if (attempt.is_validated) {
+              <span class="scores__validated">✓ Validated</span>
+            } @else {
+              <app-button
+                [disabled]="validatingId() === attempt.id"
+                (clicked)="validateAttempt(attempt)">
+                {{ validatingId() === attempt.id ? 'Saving…' : 'Validate' }}
+              </app-button>
+            }
+          </div>
+          @if (attempt.audio_url) {
+            <audio class="scores__audio" [src]="attempt.audio_url" controls></audio>
+          }
+        </div>
+      }
+    }
+  </div>
+
+  <div footer>
+    <app-button variant="secondary" (clicked)="closeScores()">Done</app-button>
+  </div>
+</app-modal>
+
+<app-modal
+  [open]="isAssignOpen()"
+  [title]="'Assign Books — ' + (assignStudent()?.first_name ?? '')"
+  (closed)="closeAssign()">
+  <div class="assign">
+    <p class="assign__hint">
+      Pick which DepEd Leveled Reader Books this pupil can work through. Books unlock in order.
+    </p>
+    @if (assignLoading()) {
+      <app-spinner label="Loading books…" />
+    } @else if (allBooks().length === 0) {
+      <p class="assign__empty">No books exist yet. Create some on the Books &amp; Content page first.</p>
+    } @else {
+      <ul class="assign__list">
+        @for (book of allBooks(); track book.id) {
+          <li class="assign__item" [class.assign__item--on]="isAssigned(book.id)">
+            <label class="assign__label">
+              <input
+                type="checkbox"
+                [checked]="isAssigned(book.id)"
+                (change)="toggleAssignBook(book.id)" />
+              <span class="assign__title">{{ book.title }}</span>
+              <span class="assign__meta">{{ book.reading_level || 'Storybook' }}</span>
+            </label>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <div footer>
+    <app-button variant="secondary" (clicked)="closeAssign()">Cancel</app-button>
+    <app-button [disabled]="assignSaving()" (clicked)="saveAssignments()">
+      {{ assignSaving() ? 'Saving…' : 'Save Assignments' }}
+    </app-button>
+  </div>
+</app-modal>

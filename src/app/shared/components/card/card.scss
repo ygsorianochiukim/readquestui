@@ -1,0 +1,6 @@
+@use 'abstracts' as *;
+
+.card {
+  @include card;
+  padding: var(--space-5);
+}

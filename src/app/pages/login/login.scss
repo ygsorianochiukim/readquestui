@@ -1,0 +1,85 @@
+@use 'abstracts' as *;
+
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: linear-gradient(160deg, var(--color-primary-soft), var(--color-background));
+
+  &__card {
+    width: 100%;
+    max-width: 420px;
+    @include card;
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-6);
+  }
+
+  &__brand {
+    text-align: center;
+    margin-bottom: var(--space-5);
+  }
+
+  &__logo {
+    width: 220px;
+    max-width: 75%;
+    height: auto;
+  }
+
+  &__subtitle {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    margin-top: var(--space-2);
+  }
+
+  &__tabs {
+    display: flex;
+    gap: var(--space-1);
+    background: var(--color-background);
+    border-radius: var(--radius-md);
+    padding: var(--space-1);
+    margin-bottom: var(--space-5);
+  }
+
+  &__tab {
+    flex: 1;
+    padding: 0.55rem;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &--active {
+      background: var(--color-surface);
+      color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+
+    @media (max-width: $breakpoint-sm) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__hint {
+    text-align: center;
+    margin-top: var(--space-4);
+    font-size: 0.75rem;
+    color: var(--color-text-soft);
+  }
+}

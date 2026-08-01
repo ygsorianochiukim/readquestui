@@ -1,0 +1,70 @@
+<div class="page-actions page-actions--split">
+  <a class="back-link" routerLink="/dashboard/books">← Back to books</a>
+  <input
+    #fileInput
+    type="file"
+    accept="image/*"
+    multiple
+    hidden
+    (change)="onFilesSelected($event)" />
+  <app-button [disabled]="uploading()" (clicked)="fileInput.click()">+ Upload Pages</app-button>
+</div>
+
+<app-alert [message]="errorMessage()" variant="error" />
+
+@if (uploading()) {
+  <app-alert [message]="uploadProgress()" variant="info" />
+}
+
+@if (loading()) {
+  <app-spinner label="Loading pages…" />
+} @else if (pages().length === 0) {
+  <app-empty-state
+    icon="📄"
+    title="No pages yet"
+    message="Upload photos or scans of the book pages. The text is read from each image automatically — you can fix it before pupils see it.">
+    <app-button [disabled]="uploading()" (clicked)="fileInput.click()">+ Upload Pages</app-button>
+  </app-empty-state>
+} @else {
+  <div class="pages">
+    @for (page of pages(); track page.id) {
+      <article class="page-card">
+        <div class="page-card__image">
+          @if (page.image_url) {
+            <img [src]="page.image_url" [alt]="'Page ' + page.page_number" />
+          }
+        </div>
+
+        <div class="page-card__body">
+          <div class="page-card__head">
+            <span class="page-card__num">Page {{ page.page_number }}</span>
+            <div class="page-card__actions">
+              <app-button variant="secondary" (clicked)="playNarration(page)">
+                @if (activeNarrationId() === page.id && narrationLoading()) {
+                  Loading…
+                } @else if (activeNarrationId() === page.id) {
+                  ⏸ Stop
+                } @else {
+                  🔊 Listen
+                }
+              </app-button>
+              <app-button variant="ghost" (clicked)="deletePage(page)">Delete</app-button>
+            </div>
+          </div>
+
+          <textarea
+            class="page-card__text"
+            rows="6"
+            [(ngModel)]="page.text"
+            placeholder="The text read from this page will appear here. You can edit it."></textarea>
+
+          <div class="page-card__save">
+            <app-button [disabled]="savingPageId() === page.id" (clicked)="saveText(page)">
+              {{ savingPageId() === page.id ? 'Saving…' : 'Save Text' }}
+            </app-button>
+          </div>
+        </div>
+      </article>
+    }
+  </div>
+}

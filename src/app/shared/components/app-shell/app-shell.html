@@ -1,0 +1,54 @@
+<div class="layout" [class.layout--sidebar-open]="sidebarOpen()">
+  <!-- Backdrop shown behind the drawer on mobile -->
+  <div class="layout__overlay" (click)="closeSidebar()"></div>
+
+  <!-- Sidebar navigation -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <img src="/Readquest.png" alt="ReadQuest" class="sidebar__logo" />
+      <p class="sidebar__tagline">{{ subtitle() }}</p>
+    </div>
+
+    <nav class="sidebar__nav">
+      @for (item of navItems(); track item.path) {
+        <a
+          class="sidebar__link"
+          [routerLink]="item.path"
+          routerLinkActive="sidebar__link--active"
+          (click)="closeSidebar()">
+          <span class="sidebar__icon">{{ item.icon }}</span>
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+  </aside>
+
+  <!-- Main area -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar__left">
+        <button
+          type="button"
+          class="topbar__menu"
+          (click)="toggleSidebar()"
+          aria-label="Toggle menu">
+          ☰
+        </button>
+        <h1 class="topbar__title">{{ pageTitle() }}</h1>
+      </div>
+
+      <div class="topbar__right">
+        <div class="topbar__profile">
+          <div class="topbar__avatar">{{ initials() }}</div>
+          <p class="topbar__fullname">{{ name() }}</p>
+        </div>
+
+        <button type="button" class="topbar__logout" (click)="logout.emit()">Log out</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <ng-content />
+    </main>
+  </div>
+</div>

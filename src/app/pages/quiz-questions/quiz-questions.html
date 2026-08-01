@@ -1,0 +1,90 @@
+<div class="page-actions page-actions--split">
+  <button type="button" class="back-link" (click)="goBack()">← Back to chapters</button>
+  <app-button (clicked)="openCreateForm()">+ Add Question</app-button>
+</div>
+
+<app-alert [message]="errorMessage()" variant="error" />
+
+@if (loading()) {
+  <app-spinner label="Loading questions…" />
+} @else if (questions().length === 0) {
+  <app-empty-state
+    icon="❓"
+    title="No quiz questions yet"
+    message="Add a question with a few choices and mark the correct answer.">
+    <app-button (clicked)="openCreateForm()">+ Add Question</app-button>
+  </app-empty-state>
+} @else {
+  <div class="question-list">
+    @for (question of questions(); track question.id; let questionIndex = $index) {
+      <article class="question-card">
+        <div class="question-card__head">
+          <p class="question-card__text">{{ questionIndex + 1 }}. {{ question.question_text }}</p>
+          <div class="question-card__actions">
+            <app-button variant="ghost" (clicked)="openEditForm(question)">Edit</app-button>
+            <app-button variant="ghost" (clicked)="deleteQuestion(question)">Delete</app-button>
+          </div>
+        </div>
+
+        <ul class="question-card__choices">
+          @for (choice of question.choices; track choice) {
+            <li
+              class="question-card__choice"
+              [class.question-card__choice--correct]="choice === question.correct_answer">
+              <span>{{ choice === question.correct_answer ? '✓' : '•' }}</span>
+              {{ choice }}
+            </li>
+          }
+        </ul>
+      </article>
+    }
+  </div>
+}
+
+<app-modal
+  [open]="isFormOpen()"
+  [title]="editingQuestionId() ? 'Edit Question' : 'New Question'"
+  (closed)="closeForm()">
+  <form class="question-form" (ngSubmit)="saveQuestion()">
+    <app-form-field label="Question">
+      <input name="question_text" [(ngModel)]="questionForm.question_text" required />
+    </app-form-field>
+
+    <div class="choices">
+      <p class="choices__label">Choices (select the correct one)</p>
+
+      @for (choice of questionForm.choices; track $index) {
+        <div class="choices__row">
+          <input
+            type="radio"
+            name="correct_answer"
+            [value]="choice"
+            [(ngModel)]="questionForm.correct_answer"
+            [disabled]="!choice" />
+          <input
+            class="choices__input"
+            [name]="'choice_' + $index"
+            [ngModel]="choice"
+            (ngModelChange)="updateChoice($index, $event)"
+            [placeholder]="'Choice ' + ($index + 1)" />
+          <button
+            type="button"
+            class="choices__remove"
+            [disabled]="questionForm.choices.length <= 2"
+            (click)="removeChoice($index)">
+            ✕
+          </button>
+        </div>
+      }
+
+      <button type="button" class="choices__add" (click)="addChoice()">+ Add choice</button>
+    </div>
+  </form>
+
+  <div footer>
+    <app-button variant="secondary" (clicked)="closeForm()">Cancel</app-button>
+    <app-button [disabled]="saving()" (clicked)="saveQuestion()">
+      {{ saving() ? 'Saving…' : 'Save Question' }}
+    </app-button>
+  </div>
+</app-modal>

@@ -1,0 +1,18 @@
+@use 'abstracts' as *;
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile__actions {
+  margin-top: var(--space-5);
+  display: flex;
+  justify-content: flex-end;
+}

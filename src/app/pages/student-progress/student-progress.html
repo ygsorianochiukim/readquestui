@@ -1,0 +1,113 @@
+@if (loading()) {
+  <app-spinner label="Loading progress…" />
+} @else if (report(); as data) {
+  <div class="report">
+    <div class="report__head no-print">
+      <app-button variant="ghost" (clicked)="back()">← Students</app-button>
+      <app-button variant="secondary" (clicked)="print()">🖨 Print report</app-button>
+    </div>
+
+    <app-card>
+      <div class="summary">
+        <div>
+          <h2 class="summary__name">{{ data.student.full_name }}</h2>
+          <p class="summary__meta">
+            {{ data.student.username }} · {{ data.student.reading_level || 'No level' }} ·
+            ⭐ {{ data.student.points }} points
+          </p>
+        </div>
+        <div class="summary__overall">
+          <span class="summary__pct">{{ data.progress.percent }}%</span>
+          <span class="summary__pct-label">
+            {{ data.progress.completed_chapters }} / {{ data.progress.total_chapters }} chapters
+          </span>
+        </div>
+      </div>
+      <app-progress-bar [percent]="data.progress.percent" [showLabel]="false" />
+
+      @if (data.badges.length > 0) {
+        <div class="summary__badges">
+          @for (badge of data.badges; track badge.id) {
+            <span class="summary__badge" [title]="badge.description || badge.name">
+              {{ badge.icon || '🏅' }} {{ badge.name }}
+            </span>
+          }
+        </div>
+      }
+    </app-card>
+
+    <!-- Per-book / per-chapter progress -->
+    @for (book of data.progress.books; track book.id) {
+      <app-card>
+        <div class="book">
+          <h3 class="book__title">{{ book.title }}</h3>
+          <span class="book__count">{{ book.completed_chapters }} / {{ book.total_chapters }}</span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Chapter</th>
+                <th>Story</th>
+                <th>Read-aloud</th>
+                <th>Game</th>
+                <th>Quiz</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (chapter of book.chapters; track chapter.id) {
+                <tr>
+                  <td class="table__strong">{{ chapter.chapter_number }}. {{ chapter.title }}</td>
+                  <td>{{ activityMark(chapter.progress?.story_read) }}</td>
+                  <td>{{ activityMark(chapter.progress?.pronunciation_passed) }}</td>
+                  <td>{{ activityMark(chapter.progress?.game_completed) }}</td>
+                  <td>
+                    {{ activityMark(chapter.progress?.quiz_passed) }}
+                    @if (chapter.progress?.quiz_score !== null && chapter.progress?.quiz_score !== undefined) {
+                      ({{ chapter.progress?.quiz_score }}%)
+                    }
+                  </td>
+                  <td>{{ chapterState(chapter) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </app-card>
+    }
+
+    <!-- Pronunciation history -->
+    <app-card>
+      <h3 class="book__title">Read-aloud history</h3>
+      @if (data.pronunciation.length === 0) {
+        <p class="report__empty">No read-aloud attempts yet.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Overall</th>
+                <th>Accuracy</th>
+                <th>Fluency</th>
+                <th>Completeness</th>
+                <th>Validated</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (attempt of data.pronunciation; track attempt.id) {
+                <tr>
+                  <td class="table__strong">{{ (attempt.pron_score ?? 0).toFixed(0) }}</td>
+                  <td>{{ (attempt.accuracy_score ?? 0).toFixed(0) }}</td>
+                  <td>{{ (attempt.fluency_score ?? 0).toFixed(0) }}</td>
+                  <td>{{ (attempt.completeness_score ?? 0).toFixed(0) }}</td>
+                  <td>{{ attempt.is_validated ? '✓' : '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </app-card>
+  </div>
+}

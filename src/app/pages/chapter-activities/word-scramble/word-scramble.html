@@ -1,0 +1,41 @@
+@if (finished()) {
+  <div class="game game--done">
+    <span class="game__emoji">🎉</span>
+    <p class="game__done-text">Word game complete!</p>
+  </div>
+} @else if (total() === 0) {
+  <p class="game__empty">No words to play with in this chapter.</p>
+} @else {
+  <div class="game">
+    <p class="game__progress">Word {{ index() + 1 }} of {{ total() }}</p>
+    <p class="game__prompt">Unscramble this word:</p>
+
+    <div class="game__scramble">
+      @for (letter of scrambled().split(''); track $index) {
+        <span class="game__tile">{{ letter }}</span>
+      }
+    </div>
+
+    <p class="game__hint">Hint: it starts with “{{ current().charAt(0) }}”</p>
+
+    <input
+      class="game__input"
+      type="text"
+      [(ngModel)]="guess"
+      (keyup.enter)="check()"
+      placeholder="Type the word"
+      autocomplete="off" />
+
+    @if (feedback() === 'correct') {
+      <p class="game__feedback game__feedback--ok">✅ Correct!</p>
+      <app-button (clicked)="nextWord()">
+        {{ index() < total() - 1 ? 'Next word →' : 'Finish game 🎉' }}
+      </app-button>
+    } @else {
+      @if (feedback() === 'wrong') {
+        <p class="game__feedback game__feedback--no">❌ Not quite — try again!</p>
+      }
+      <app-button (clicked)="check()" [disabled]="!guess().trim()">Check</app-button>
+    }
+  </div>
+}

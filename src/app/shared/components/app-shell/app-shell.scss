@@ -1,0 +1,237 @@
+@use 'abstracts' as *;
+
+// Floating "boxes" layout: a rounded blue sidebar and a rounded white
+// topbar float on the page background with gaps between them.
+.layout {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  min-height: 100vh;
+  background: var(--color-background);
+
+  &__overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 35, 51, 0.45);
+    z-index: 55;
+  }
+}
+
+// ---- Sidebar (floating rounded box) ----
+.sidebar {
+  width: $sidebar-width;
+  flex-shrink: 0;
+  background: var(--color-sidebar);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  // Stays in view while the page scrolls.
+  position: sticky;
+  top: var(--space-4);
+  height: calc(100vh - (2 * var(--space-4)));
+
+  &__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-5);
+  }
+
+  &__logo {
+    width: 160px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 1px 2px rgba(31, 35, 51, 0.18));
+  }
+
+  &__tagline {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-sidebar-text);
+    opacity: 0.75;
+  }
+
+  &__nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    overflow-y: auto;
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--color-sidebar-text);
+    text-decoration: none;
+
+    &:hover {
+      background: var(--color-sidebar-hover);
+      text-decoration: none;
+    }
+
+    &--active {
+      background: var(--color-sidebar-active);
+      color: var(--color-primary-dark);
+      box-shadow: var(--shadow-sm);
+    }
+  }
+
+  &__icon {
+    font-size: 1.05rem;
+  }
+}
+
+// ---- Main area ----
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+// ---- Topbar (floating rounded box) ----
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: var(--font-size-xl);
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__menu {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--color-text);
+    cursor: pointer;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-shrink: 0;
+  }
+
+  &__profile {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  &__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  &__fullname {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+  }
+
+  &__logout {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    padding: 0.5rem 0.9rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-danger);
+      border-color: var(--color-danger);
+    }
+  }
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+// ---- Mobile: sidebar becomes an off-canvas drawer ----
+@media (max-width: $breakpoint-md) {
+  .layout {
+    padding: var(--space-3);
+    gap: var(--space-3);
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: auto;
+    border-radius: 0;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .layout--sidebar-open {
+    .sidebar {
+      transform: translateX(0);
+    }
+
+    .layout__overlay {
+      display: block;
+    }
+  }
+
+  .topbar {
+    padding: var(--space-3) var(--space-4);
+
+    &__menu {
+      display: inline-flex;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar__fullname {
+    display: none;
+  }
+}

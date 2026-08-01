@@ -1,0 +1,36 @@
+@if (loading()) {
+  <app-spinner label="Loading your profile…" />
+} @else {
+  <app-card>
+    <app-alert [message]="errorMessage()" variant="error" />
+    <app-alert [message]="successMessage()" variant="success" />
+
+    <form class="form-grid" (ngSubmit)="save()">
+      <app-form-field label="First name">
+        <input name="first_name" [(ngModel)]="form.first_name" required />
+      </app-form-field>
+
+      <app-form-field label="Last name">
+        <input name="last_name" [(ngModel)]="form.last_name" required />
+      </app-form-field>
+
+      <app-form-field label="Email">
+        <input type="email" name="email" [(ngModel)]="form.email" required />
+      </app-form-field>
+
+      <app-form-field label="Phone number">
+        <input name="phone_number" [(ngModel)]="form.phone_number" />
+      </app-form-field>
+
+      <app-form-field label="New password" hint="Leave blank to keep your current password">
+        <input type="password" name="password" [(ngModel)]="form.password" />
+      </app-form-field>
+    </form>
+
+    <div class="profile__actions">
+      <app-button [disabled]="saving()" (clicked)="save()">
+        {{ saving() ? 'Saving…' : 'Save Profile' }}
+      </app-button>
+    </div>
+  </app-card>
+}

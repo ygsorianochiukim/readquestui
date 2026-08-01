@@ -1,0 +1,30 @@
+@use 'abstracts' as *;
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+
+  &__track {
+    flex: 1;
+    height: 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    overflow: hidden;
+  }
+
+  &__fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+    transition: width 0.4s ease;
+  }
+
+  &__label {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-text-muted);
+    min-width: 2.5rem;
+    text-align: right;
+  }
+}

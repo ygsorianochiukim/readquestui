@@ -1,0 +1,22 @@
+<button type="button" class="action-menu__trigger" (click)="toggle($event)">
+  {{ label() }}
+  <span class="action-menu__caret" [class.action-menu__caret--open]="open()">▾</span>
+</button>
+
+@if (open()) {
+  <div
+    class="action-menu__panel"
+    [style.top.px]="top()"
+    [style.left.px]="left()"
+    (click)="$event.stopPropagation()">
+    @for (item of items(); track item.key) {
+      <button
+        type="button"
+        class="action-menu__item"
+        [class.action-menu__item--danger]="item.danger"
+        (click)="choose(item)">
+        {{ item.label }}
+      </button>
+    }
+  </div>
+}

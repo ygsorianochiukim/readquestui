@@ -1,0 +1,7 @@
+<label class="form-field">
+  <span class="form-field__label">{{ label() }}</span>
+  <ng-content />
+  @if (hint()) {
+    <span class="form-field__hint">{{ hint() }}</span>
+  }
+</label>

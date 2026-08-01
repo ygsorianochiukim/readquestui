@@ -1,0 +1,190 @@
+@use 'abstracts' as *;
+
+// Small unobtrusive floating back button (replaces the old header).
+.mapback {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  margin-bottom: -44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-primary-dark);
+  font-size: 1.3rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+}
+
+// A tall, scrollable candy world (portrait, like a saga map).
+.worldmap {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: url('/map.png') center / 100% 100% no-repeat;
+  box-shadow: 0 12px 30px rgba(20, 40, 90, 0.35);
+
+  &__flag {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2.4rem;
+    z-index: 4;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35));
+  }
+
+  &__trail {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  &__edge {
+    fill: none;
+    stroke: #d64c8c;
+    stroke-width: 44;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &__road {
+    fill: none;
+    stroke: #ffb0d6;
+    stroke-width: 34;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &__stripes {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.9);
+    stroke-width: 34;
+    stroke-linecap: butt;
+    stroke-linejoin: round;
+    stroke-dasharray: 9 26;
+  }
+}
+
+.spot {
+  position: absolute;
+  width: 0;
+  height: 0;
+
+  &__node {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    width: 66px;
+    height: 66px;
+    border: 4px solid #fff;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: #fff;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    z-index: 2;
+    overflow: hidden;
+    transition: transform 0.15s ease;
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.22), 0 9px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  &__node::before {
+    content: '';
+    position: absolute;
+    top: 7px;
+    left: 12px;
+    width: 22px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.65);
+    filter: blur(1px);
+  }
+
+  &__node:hover:not(:disabled) { transform: translate(-50%, -50%) translateY(-3px) scale(1.06); }
+  &__node:active:not(:disabled) { transform: translate(-50%, -50%) translateY(2px); }
+
+  &__icon { font-size: 1.6rem; position: relative; }
+  &__num { position: relative; }
+
+  &__buddy {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%) translateY(-54px);
+    font-size: 2.2rem;
+    z-index: 3;
+    filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.4));
+    animation: spot-bob 1.6s ease-in-out infinite;
+  }
+
+  &__card {
+    position: absolute;
+    left: 0;
+    top: 38px;
+    transform: translateX(-50%);
+    width: 150px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 3px 8px rgba(20, 40, 90, 0.3);
+    text-align: center;
+  }
+
+  &__name {
+    font-weight: 800;
+    font-size: 0.78rem;
+    color: var(--color-text);
+    line-height: 1.15;
+    @include clamp-lines(1);
+  }
+
+  &__hint {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--color-primary-dark);
+
+    &--done { color: var(--color-success); }
+  }
+}
+
+.spot--completed .spot__node { background: radial-gradient(circle at 38% 32%, #ffe08a, #ffb01f 70%); }
+.spot--current .spot__node {
+  background: radial-gradient(circle at 38% 32%, #8fc0ff, var(--color-primary) 70%);
+  animation: spot-pulse 1.6s ease-in-out infinite;
+}
+.spot--available .spot__node { background: radial-gradient(circle at 38% 32%, #8fefb6, var(--color-success) 70%); }
+.spot--locked .spot__node {
+  background: radial-gradient(circle at 38% 32%, #dfe3ec, #9aa0b4 70%);
+  cursor: not-allowed;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.16), 0 6px 10px rgba(0, 0, 0, 0.2);
+}
+.spot--locked .spot__card { background: rgba(255, 255, 255, 0.82); }
+.spot--locked .spot__hint { color: var(--color-text-soft); }
+
+@keyframes spot-pulse {
+  0%, 100% { box-shadow: 0 6px 0 rgba(0,0,0,.22), 0 9px 16px rgba(0,0,0,.3), 0 0 0 0 rgba(79,131,230,.55); }
+  50% { box-shadow: 0 6px 0 rgba(0,0,0,.22), 0 9px 16px rgba(0,0,0,.3), 0 0 0 14px rgba(79,131,230,0); }
+}
+
+@keyframes spot-bob {
+  0%, 100% { transform: translate(-50%, -50%) translateY(-54px); }
+  50% { transform: translate(-50%, -50%) translateY(-62px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot--current .spot__node,
+  .spot__buddy { animation: none; }
+}

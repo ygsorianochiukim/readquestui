@@ -1,0 +1,63 @@
+<div class="game">
+  <!-- Floating scenery -->
+  <div class="game__sky" aria-hidden="true">
+    <span class="game__cloud game__cloud--1"></span>
+    <span class="game__cloud game__cloud--2"></span>
+    <span class="game__cloud game__cloud--3"></span>
+    <span class="game__sun"></span>
+  </div>
+
+  <!-- Top HUD: player pod + currencies -->
+  <header class="hud">
+    <div class="hud__player">
+      <div class="hud__avatar">
+        @if (avatarUrl()) {
+          <img [src]="avatarUrl()" [alt]="fullName()" />
+        } @else {
+          <span>{{ initials() }}</span>
+        }
+        <span class="hud__lv">{{ playerLevel() }}</span>
+      </div>
+      <div class="hud__who">
+        <p class="hud__name">{{ firstName() }}</p>
+        @if (level()) {
+          <span class="hud__level">{{ level() }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="hud__currencies">
+      <div class="hud__pill hud__pill--badges" aria-label="Badges">
+        <span class="hud__pill-icon">🏅</span>
+        <span class="hud__pill-val">{{ badgeCount() }}</span>
+      </div>
+      <div class="hud__pill hud__pill--coins" aria-label="Points">
+        <span class="hud__pill-icon">⭐</span>
+        <span class="hud__pill-val">{{ points() }}</span>
+        <span class="hud__plus">+</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page content -->
+  <main class="game__content">
+    <router-outlet />
+  </main>
+
+  <!-- Bottom game nav -->
+  <nav class="dock">
+    @for (item of navItems; track item.path) {
+      <a
+        class="dock__btn"
+        [routerLink]="item.path"
+        routerLinkActive="dock__btn--active">
+        <span class="dock__icon">{{ item.icon }}</span>
+        <span class="dock__label">{{ item.label }}</span>
+      </a>
+    }
+    <button type="button" class="dock__btn dock__btn--logout" (click)="logout()">
+      <span class="dock__icon">🚪</span>
+      <span class="dock__label">Log out</span>
+    </button>
+  </nav>
+</div>

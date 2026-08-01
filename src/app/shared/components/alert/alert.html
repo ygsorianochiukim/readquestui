@@ -1,0 +1,10 @@
+@if (message()) {
+  <div
+    class="alert"
+    [class.alert--error]="variant() === 'error'"
+    [class.alert--success]="variant() === 'success'"
+    [class.alert--info]="variant() === 'info'">
+    <span class="alert__icon">{{ icon[variant()] }}</span>
+    <span class="alert__message">{{ message() }}</span>
+  </div>
+}

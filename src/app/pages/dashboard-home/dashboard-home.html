@@ -1,0 +1,77 @@
+@if (loading()) {
+  <app-spinner label="Loading your dashboard…" />
+} @else if (data(); as dash) {
+  <div class="stats">
+    <app-card>
+      <div class="stat">
+        <span class="stat__value">{{ dash.stats.students }}</span>
+        <span class="stat__label">🧒 Students</span>
+      </div>
+    </app-card>
+    <app-card>
+      <div class="stat">
+        <span class="stat__value">{{ dash.stats.active_books }}</span>
+        <span class="stat__label">📚 Active books</span>
+      </div>
+    </app-card>
+    <app-card>
+      <div class="stat">
+        <span class="stat__value">{{ dash.stats.average_completion }}%</span>
+        <span class="stat__label">📈 Avg. completion</span>
+      </div>
+    </app-card>
+    <app-card>
+      <div class="stat" [class.stat--alert]="dash.stats.pending_validations > 0">
+        <span class="stat__value">{{ dash.stats.pending_validations }}</span>
+        <span class="stat__label">🎤 Scores to validate</span>
+      </div>
+    </app-card>
+  </div>
+
+  <app-card>
+    <div class="section-head">
+      <h3 class="section-head__title">Class progress</h3>
+      <app-button variant="ghost" (clicked)="goStudents()">Manage students →</app-button>
+    </div>
+
+    @if (dash.students.length === 0) {
+      <app-empty-state
+        icon="🧒"
+        title="No students yet"
+        message="Add pupils and assign books to start tracking reading progress." />
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Reading level</th>
+              <th>Books</th>
+              <th>Progress</th>
+              <th>Points</th>
+              <th class="table__right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (student of dash.students; track student.id) {
+              <tr>
+                <td class="table__strong">{{ student.full_name }}</td>
+                <td>{{ student.reading_level || '—' }}</td>
+                <td>{{ student.completed_books }} / {{ student.assigned_books }}</td>
+                <td class="table__progress">
+                  <app-progress-bar [percent]="student.percent" />
+                </td>
+                <td>⭐ {{ student.points }}</td>
+                <td class="table__right">
+                  <app-button variant="ghost" (clicked)="goProgress(student)">View</app-button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </app-card>
+} @else {
+  <app-empty-state icon="📊" title="Dashboard unavailable" message="Could not load your dashboard." />
+}

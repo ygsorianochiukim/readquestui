@@ -1,0 +1,8 @@
+<div class="progress">
+  <div class="progress__track">
+    <div class="progress__fill" [style.width.%]="clamped()"></div>
+  </div>
+  @if (showLabel()) {
+    <span class="progress__label">{{ clamped() }}%</span>
+  }
+</div>

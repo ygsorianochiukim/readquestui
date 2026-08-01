@@ -1,0 +1,10 @@
+// =============================================================
+//  Abstracts
+//  A single entry point that re-exports the SCSS variables and
+//  mixins. Components only need one line to get everything:
+//    @use 'abstracts' as *;
+//  (This file outputs no CSS by itself.)
+// =============================================================
+
+@forward 'variables';
+@forward 'mixins';

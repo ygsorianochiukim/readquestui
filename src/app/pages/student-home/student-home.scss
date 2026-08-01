@@ -1,0 +1,428 @@
+@use 'abstracts' as *;
+
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+
+  &__hello {
+    padding: 0 var(--space-2);
+  }
+
+  &__title {
+    font-family: var(--font-display);
+    font-size: var(--font-size-2xl);
+    color: #fff;
+    text-shadow: 0 2px 6px rgba(20, 40, 90, 0.4);
+  }
+
+  &__wave {
+    display: inline-block;
+    animation: wave 2.2s ease-in-out infinite;
+    transform-origin: 70% 70%;
+  }
+
+  &__subtitle {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    text-shadow: 0 1px 4px rgba(20, 40, 90, 0.35);
+  }
+}
+
+// ---- World scene ---------------------------------------------------------
+.world {
+  position: relative;
+
+  &__scene {
+    position: relative;
+    height: clamp(320px, 46vh, 460px);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    // The illustrated adventure world, framed like a game scene.
+    background: url('/map.png') center/cover no-repeat;
+    // Chunky "wooden frame" look.
+    border: 6px solid #fff;
+    box-shadow:
+      0 0 0 4px rgba(255, 176, 31, 0.9),
+      0 16px 34px rgba(20, 40, 90, 0.4);
+  }
+
+  // Location banner, top-centre.
+  &__banner {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 80%;
+    padding: 8px 24px;
+    text-align: center;
+    border-radius: var(--radius-full);
+    background: rgba(30, 30, 60, 0.55);
+    backdrop-filter: blur(4px);
+    color: #fff;
+  }
+
+  &__place {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    line-height: 1.1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    @include clamp-lines(1);
+  }
+
+  &__sub {
+    font-size: 0.72rem;
+    font-weight: 700;
+    opacity: 0.9;
+  }
+
+  // Friendly mascot with a speech bubble, bottom-left.
+  &__mascot {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  &__bubble {
+    padding: 5px 12px;
+    border-radius: var(--radius-full) var(--radius-full) var(--radius-full) 4px;
+    background: #fff;
+    color: var(--color-text);
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: var(--shadow-md);
+  }
+
+  &__buddy {
+    font-size: 3.4rem;
+    filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.35));
+    animation: buddy-bob 2.4s ease-in-out infinite;
+  }
+
+  // Big LEVEL badge, top-right.
+  &__level {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(160deg, #7b6cff, #4f2fb0);
+    color: #fff;
+    border: 3px solid #fff;
+    box-shadow: 0 5px 0 #3a2288, 0 8px 14px rgba(0, 0, 0, 0.3);
+
+    span { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em; }
+    b { font-family: var(--font-display); font-size: 1.6rem; }
+  }
+
+  // The big play button.
+  &__play {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 26px;
+    border: 3px solid #fff;
+    border-radius: var(--radius-full);
+    background: linear-gradient(160deg, #2fd67a, #16a75a);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #0f7d43, 0 10px 18px rgba(0, 0, 0, 0.3);
+    transition: transform 0.12s ease;
+
+    &:hover { transform: translateX(-50%) translateY(-2px); }
+    &:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 3px 0 #0f7d43; }
+  }
+
+  &__play-ic { font-size: 0.9rem; }
+
+  &__play-bar {
+    display: block;
+    width: 70px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.4);
+    overflow: hidden;
+
+    span {
+      display: block;
+      height: 100%;
+      border-radius: var(--radius-full);
+      background: #ffe071;
+    }
+  }
+
+  &__done {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    padding: 12px 26px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(160deg, #ffb01f, #ff8a3d);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    border: 3px solid #fff;
+    box-shadow: 0 5px 0 #c96a10;
+  }
+}
+
+// ---- Weekly quests panel -------------------------------------------------
+.wq {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-md);
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+    margin-bottom: var(--space-3);
+  }
+
+  &__count {
+    margin-left: auto;
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  &__list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+
+  &__check {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-background);
+    font-size: 0.9rem;
+  }
+
+  &__item--done {
+    color: var(--color-text);
+    .wq__check {
+      background: linear-gradient(160deg, #6ee7a0, var(--color-success));
+      color: #fff;
+    }
+    .wq__label { text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, 0.25); }
+  }
+}
+
+// On desktop, float the quests panel over the scene like a game overlay.
+@include respond-to(md) {
+  .wq {
+    position: absolute;
+    top: 64px;
+    left: 18px;
+    width: 260px;
+    margin-top: 0;
+    z-index: 3;
+  }
+}
+
+@keyframes buddy-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+// ---- Stat tiles ----------------------------------------------------------
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+
+  @media (max-width: $breakpoint-sm) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-4) var(--space-2);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-md);
+  border-bottom: 4px solid rgba(0, 0, 0, 0.06);
+
+  &__icon { font-size: 1.7rem; }
+
+  &__value {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    color: var(--color-text);
+  }
+
+  &__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  &--coins { border-bottom-color: #ffb01f; }
+  &--books { border-bottom-color: var(--color-primary); }
+  &--badges { border-bottom-color: var(--color-pink); }
+  &--progress { border-bottom-color: var(--color-success); }
+}
+
+// ---- Panels --------------------------------------------------------------
+.panel {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-md);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+  }
+
+  &__title {
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
+    color: var(--color-text);
+  }
+
+  &__empty {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+}
+
+// ---- Mini quest chips ----------------------------------------------------
+.quests {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-4) var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+
+  &:hover:not(&--locked) {
+    transform: translateY(-3px);
+    border-color: var(--color-primary);
+  }
+
+  &__icon { font-size: 1.8rem; }
+
+  &__title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--color-text);
+    @include clamp-lines(2);
+  }
+
+  &__pct {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--color-primary-dark);
+  }
+
+  &--locked {
+    cursor: not-allowed;
+    opacity: 0.6;
+    .mini__pct { color: var(--color-text-soft); }
+  }
+
+  &--done {
+    border-color: var(--color-success);
+    .mini__pct { color: var(--color-success); }
+  }
+}
+
+// ---- Treasure / badges ---------------------------------------------------
+.treasure {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.treasure__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 92px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, #fff7e0, #ffe9b8);
+  border: 2px solid #ffd884;
+  text-align: center;
+}
+
+.treasure__icon { font-size: 2rem; }
+
+.treasure__name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #7a5a12;
+  @include clamp-lines(2);
+}
+
+// ---- Animations ----------------------------------------------------------
+@keyframes wave {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(14deg); }
+  20% { transform: rotate(-8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub__wave,
+  .world__buddy { animation: none; }
+}

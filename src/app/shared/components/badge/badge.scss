@@ -1,0 +1,36 @@
+@use 'abstracts' as *;
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: capitalize;
+
+  &--neutral {
+    background: var(--color-background);
+    color: var(--color-text-muted);
+  }
+
+  &--success {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  &--warning {
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+  }
+
+  &--danger {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+
+  &--primary {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+  }
+}

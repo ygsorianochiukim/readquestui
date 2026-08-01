@@ -1,0 +1,30 @@
+@use 'abstracts' as *;
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-4);
+
+  &__icon {
+    flex-shrink: 0;
+  }
+
+  &--error {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+
+  &--success {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  &--info {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+  }
+}

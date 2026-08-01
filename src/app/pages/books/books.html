@@ -1,0 +1,130 @@
+<div class="page-actions">
+  <app-button (clicked)="openCreateForm()">+ Add Book</app-button>
+</div>
+
+<app-alert [message]="errorMessage()" variant="error" />
+
+@if (loading()) {
+  <app-spinner label="Loading books…" />
+} @else if (books().length === 0) {
+  <app-empty-state
+    icon="📚"
+    title="No books yet"
+    message="Add the DepEd Leveled Reader Books so pupils have something to read.">
+    <app-button (clicked)="openCreateForm()">+ Add Book</app-button>
+  </app-empty-state>
+} @else {
+  <div class="book-grid">
+    @for (book of books(); track book.id) {
+      <article class="entity-card">
+        <div class="entity-card__head">
+          <div class="entity-card__thumb">
+            @if (book.cover_image_url) {
+              <img [src]="book.cover_image_url" [alt]="book.title" />
+            } @else {
+              <span class="entity-card__thumb-fallback">📖</span>
+            }
+          </div>
+          <div class="entity-card__heading">
+            <h3 class="entity-card__title">{{ book.title }}</h3>
+            @if (book.type === 'scanned') {
+              <p class="entity-card__subheader">
+                Scanned book · {{ book.pages_count ?? 0 }} pages
+              </p>
+            } @else {
+              <p class="entity-card__subheader">
+                {{ book.reading_level || 'Book ' + book.sequence }} · {{ book.chapters_count ?? 0 }} chapters
+              </p>
+            }
+          </div>
+        </div>
+
+        @if (book.type === 'scanned') {
+          <a class="entity-card__bar" [routerLink]="['/dashboard/books', book.id, 'pages']">
+            Manage Pages
+          </a>
+        } @else {
+          <a class="entity-card__bar" [routerLink]="['/dashboard/books', book.id, 'chapters']">
+            Manage Chapters
+          </a>
+        }
+
+        <div class="entity-card__footer">
+          <button type="button" class="entity-card__action" (click)="openEditForm(book)">Update</button>
+          <span class="entity-card__divider"></span>
+          <button
+            type="button"
+            class="entity-card__action entity-card__action--danger"
+            (click)="deleteBook(book)">
+            Remove
+          </button>
+        </div>
+      </article>
+    }
+  </div>
+}
+
+<app-modal
+  [open]="isFormOpen()"
+  [title]="editingBookId() ? 'Edit Book' : 'New Book'"
+  (closed)="closeForm()">
+  <form class="form-grid" (ngSubmit)="saveBook()">
+    <app-form-field class="form-grid__full" label="Title">
+      <input name="title" [(ngModel)]="bookForm.title" required />
+    </app-form-field>
+
+    <app-form-field class="form-grid__full" label="Book type" hint="Scanned books let you upload page images and auto-extract the text.">
+      <select name="type" [(ngModel)]="bookForm.type">
+        <option value="standard">Standard (chapters)</option>
+        <option value="scanned">Scanned (uploaded pages)</option>
+      </select>
+    </app-form-field>
+
+    <app-form-field class="form-grid__full" label="Description">
+      <textarea name="description" [(ngModel)]="bookForm.description" rows="2"></textarea>
+    </app-form-field>
+
+    <app-form-field label="Reading level" hint="For example: Level 1">
+      <input name="reading_level" [(ngModel)]="bookForm.reading_level" />
+    </app-form-field>
+
+    <app-form-field label="Order (1–6)">
+      <input type="number" name="sequence" [(ngModel)]="bookForm.sequence" min="1" />
+    </app-form-field>
+
+    <app-form-field label="Cover image">
+      <div class="cover-upload">
+        <div class="cover-upload__preview">
+          @if (bookForm.cover_image_url) {
+            <img [src]="bookForm.cover_image_url" alt="Cover" />
+          } @else {
+            <span>📖</span>
+          }
+        </div>
+        <input
+          #coverInput
+          type="file"
+          accept="image/*"
+          hidden
+          (change)="onCoverSelected($event)" />
+        <app-button variant="secondary" [disabled]="coverUploading()" (clicked)="coverInput.click()">
+          {{ coverUploading() ? 'Uploading…' : (bookForm.cover_image_url ? 'Change image' : 'Upload image') }}
+        </app-button>
+      </div>
+    </app-form-field>
+
+    <app-form-field label="Status">
+      <select name="status" [(ngModel)]="bookForm.status">
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </app-form-field>
+  </form>
+
+  <div footer>
+    <app-button variant="secondary" (clicked)="closeForm()">Cancel</app-button>
+    <app-button [disabled]="saving()" (clicked)="saveBook()">
+      {{ saving() ? 'Saving…' : 'Save Book' }}
+    </app-button>
+  </div>
+</app-modal>

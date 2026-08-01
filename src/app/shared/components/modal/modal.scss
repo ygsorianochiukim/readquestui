@@ -1,0 +1,77 @@
+@use 'abstracts' as *;
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(31, 35, 51, 0.45);
+  }
+
+  &__dialog {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    animation: modal-pop 0.15s ease;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-5) var(--space-5) var(--space-3);
+  }
+
+  &__title {
+    font-size: var(--font-size-lg);
+  }
+
+  &__close {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
+
+    &:hover {
+      background: var(--color-background);
+      color: var(--color-text);
+    }
+  }
+
+  &__body {
+    padding: 0 var(--space-5);
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-5);
+  }
+}
+
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

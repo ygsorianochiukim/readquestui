@@ -1,0 +1,76 @@
+// =============================================================
+//  Design Tokens
+//  The shared "settings" of the whole app: colours, fonts,
+//  spacing, rounded corners and shadows. Exposed as CSS custom
+//  properties so any component can use them with var(...).
+//  Palette & typography follow the ReadQuest brand template.
+// =============================================================
+
+:root {
+  // ---- Brand blue (from the template) ----
+  // The light template blue is used for large fills (the sidebar);
+  // a slightly deeper blue is used for buttons/links so text stays readable.
+  --color-primary: #4f83e6;
+  --color-primary-dark: #3a6ad0;
+  --color-primary-soft: #e9f1fe;
+
+  --color-sidebar: #8ab4f8;          // the template's light blue
+  --color-sidebar-text: #1e2a4a;     // navy text, readable on light blue
+  --color-sidebar-hover: rgba(255, 255, 255, 0.45);
+  --color-sidebar-active: #ffffff;
+
+  // ---- Bright accent palette (template swatches) ----
+  --color-accent: #52dd8c;           // green
+  --color-accent-soft: #e7faee;
+  --color-pink: #ff4d8d;
+  --color-pink-soft: #ffe7f0;
+  --color-orange: #ff9e63;
+  --color-orange-soft: #fff1e6;
+  --color-yellow: #ecfb6b;
+  --color-yellow-soft: #f8ffd6;
+
+  // ---- Status colours (playful, matching the palette) ----
+  --color-success: #22c06b;
+  --color-success-soft: #e6f9ee;
+  --color-danger: #ff5470;
+  --color-danger-soft: #ffe8ec;
+  --color-warning: #ff9e3d;
+  --color-warning-soft: #fff2e2;
+
+  // ---- Surfaces & text ----
+  --color-background: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-border: #e6e8f2;
+  --color-text: #1f2333;
+  --color-text-muted: #6b7186;
+  --color-text-soft: #9aa0b4;
+
+  // ---- Rounded corners ----
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 999px;
+
+  // ---- Soft shadows ----
+  --shadow-sm: 0 1px 2px rgba(31, 35, 51, 0.06);
+  --shadow-md: 0 6px 16px rgba(31, 35, 51, 0.08);
+  --shadow-lg: 0 14px 34px rgba(31, 35, 51, 0.12);
+
+  // ---- Spacing scale ----
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+
+  // ---- Typography (template fonts) ----
+  --font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Irish Grover", "Montserrat", system-ui, cursive;
+  --font-size-sm: 0.85rem;
+  --font-size-base: 0.95rem;
+  --font-size-lg: 1.15rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+}
