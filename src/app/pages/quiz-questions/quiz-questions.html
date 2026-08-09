@@ -1,5 +1,5 @@
 <div class="page-actions page-actions--split">
-  <button type="button" class="back-link" (click)="goBack()">← Back to chapters</button>
+  <button type="button" class="back-link" (click)="goBack()"><app-icon name="back" size="sm" /> Back to chapters</button>
   <app-button (clicked)="openCreateForm()">+ Add Question</app-button>
 </div>
 
@@ -9,7 +9,7 @@
   <app-spinner label="Loading questions…" />
 } @else if (questions().length === 0) {
   <app-empty-state
-    icon="❓"
+    icon="help"
     title="No quiz questions yet"
     message="Add a question with a few choices and mark the correct answer.">
     <app-button (clicked)="openCreateForm()">+ Add Question</app-button>
@@ -31,7 +31,7 @@
             <li
               class="question-card__choice"
               [class.question-card__choice--correct]="choice === question.correct_answer">
-              <span>{{ choice === question.correct_answer ? '✓' : '•' }}</span>
+              @if (choice === question.correct_answer) {<app-icon name="check" size="sm" />} @else {<span>·</span>}
               {{ choice }}
             </li>
           }
@@ -72,7 +72,7 @@
             class="choices__remove"
             [disabled]="questionForm.choices.length <= 2"
             (click)="removeChoice($index)">
-            ✕
+            <app-icon name="close" size="sm" />
           </button>
         </div>
       }

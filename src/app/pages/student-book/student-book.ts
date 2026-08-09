@@ -2,7 +2,7 @@ import { Component, ElementRef, computed, inject, OnInit, signal } from '@angula
 import { ActivatedRoute, Router } from '@angular/router';
 import { ProgressService } from '../../services/progress/progress';
 import { BookProgress, ChapterNode } from '../../models';
-import { EmptyState, Spinner } from '../../shared/components';
+import { EmptyState, Spinner, Icon } from '../../shared/components';
 
 type LevelState = 'locked' | 'current' | 'available' | 'completed';
 
@@ -22,7 +22,7 @@ const BOTTOM_PAD = 130;
 
 @Component({
   selector: 'app-student-book',
-  imports: [EmptyState, Spinner],
+  imports: [EmptyState, Spinner, Icon],
   templateUrl: './student-book.html',
   styleUrl: './student-book.scss',
 })

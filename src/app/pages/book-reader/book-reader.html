@@ -1,4 +1,4 @@
-<a class="mapback" routerLink="/student/library" aria-label="Back to library">←</a>
+<a class="mapback" routerLink="/student/library" aria-label="Back to library"><app-icon name="back" size="lg" /></a>
 
 <app-alert [message]="errorMessage()" variant="error" />
 
@@ -6,7 +6,7 @@
   <app-spinner label="Opening your book…" />
 } @else if (total() === 0) {
   <app-empty-state
-    icon="📖"
+    icon="book"
     title="Nothing to read yet"
     message="This book doesn't have any pages yet. Check back with your teacher." />
 } @else {
@@ -31,36 +31,89 @@
     </div>
 
     <div class="reader__controls">
-      <app-button variant="secondary" [disabled]="index() === 0" (clicked)="previous()">
-        ← Previous
+      <app-button variant="secondary" [disabled]="index() === 0" (clicked)="previous()"><app-icon name="back" size="sm" /> Previous
       </app-button>
 
       <app-button (clicked)="toggleNarration()">
         @if (narrationLoading()) {
           Loading…
         } @else if (narrating()) {
-          ⏸ Stop
+          <app-icon name="pause" size="sm" /> Stop
         } @else {
-          🔊 Read aloud
+          <app-icon name="listen" size="sm" /> Read aloud
         }
       </app-button>
 
-      <app-button variant="secondary" [disabled]="index() === total() - 1" (clicked)="next()">
-        Next →
-      </app-button>
+      @if (isLastLeaf()) {
+        <app-button (clicked)="finish()"><app-icon name="celebrate" size="sm" /> I'm done</app-button>
+      } @else {
+        <app-button variant="secondary" (clicked)="next()">Next <app-icon name="forward" size="sm" /></app-button>
+      }
     </div>
 
     <p class="reader__progress">{{ current()?.label }} · {{ index() + 1 }} of {{ total() }}</p>
+
+    <!-- Page-based books: how far through the book this pupil is -->
+    @if (pageProgress(); as progress) {
+      <div class="track">
+        <div class="track__head">
+          <span class="track__label">
+            {{ progress.completed_pages }} of {{ progress.total_pages }} pages finished
+          </span>
+          <span class="track__pct">{{ progress.percent }}%</span>
+        </div>
+        <div class="track__bar">
+          <span class="track__fill" [style.width.%]="progress.percent"></span>
+        </div>
+        <div class="track__dots">
+          @for (page of progress.pages; track page.id) {
+            <span
+              class="track__dot"
+              [class.track__dot--done]="page.is_completed"
+              [class.track__dot--here]="page.page_number === index() + 1"
+              [title]="'Page ' + page.page_number + (page.is_completed ? ' — finished' : '')">
+              @if (page.is_completed) {<app-icon name="check" size="sm" />} @else {{{ page.page_number }}}
+            </span>
+          }
+        </div>
+      </div>
+
+      @if (currentPage(); as page) {
+        <div class="track__page">
+          @if (page.is_completed) {
+            <span class="track__done"><app-icon name="check" size="sm" /> You finished this page</span>
+          } @else if (page.has_text) {
+            <span class="track__todo">Read this page aloud to finish it</span>
+          } @else {
+            <app-button
+              variant="secondary"
+              [disabled]="markingRead()"
+              (clicked)="markPageRead()">
+              @if (markingRead()) {Saving…} @else {<app-icon name="check" size="sm" /> I’ve read this page}
+            </app-button>
+          }
+        </div>
+      }
+
+      @if (progress.is_completed) {
+        <div class="track__finished">
+          <p class="track__finished-text"><app-icon name="celebrate" size="sm" /> You finished this whole book!</p>
+          <app-button (clicked)="finish()">Back to my books</app-button>
+        </div>
+      }
+    }
 
     @if (current()?.text) {
       <div class="reader__record">
         <app-button [disabled]="recordingState() === 'assessing'" (clicked)="toggleRecording()">
           @if (recordingState() === 'recording') {
-            ⏹ Stop &amp; check my reading
+            <app-icon name="stop" size="sm" /> Stop &amp; check my reading
           } @else if (recordingState() === 'assessing') {
             Checking your reading…
+          } @else if (result()) {
+            <app-icon name="mic" size="sm" /> Read it again
           } @else {
-            🎤 Read this page aloud
+            <app-icon name="mic" size="sm" /> Read this page aloud
           }
         </app-button>
         @if (recordingState() === 'recording') {
@@ -93,6 +146,18 @@
         @if (attempt.recognized_text) {
           <p class="reader__heard">We heard: “{{ attempt.recognized_text }}”</p>
         }
+
+        <!-- Always give the reader somewhere to go after a score. -->
+        <div class="reader__after">
+          @if (isLastLeaf()) {
+            <p class="reader__after-text">
+              That was the last {{ current()?.kind === 'page' ? 'page' : 'chapter' }} of this book!
+            </p>
+            <app-button (clicked)="finish()"><app-icon name="celebrate" size="sm" /> Finish this book</app-button>
+          } @else {
+            <app-button (clicked)="next()">Next page <app-icon name="forward" size="sm" /></app-button>
+          }
+        </div>
       </div>
     }
   </div>

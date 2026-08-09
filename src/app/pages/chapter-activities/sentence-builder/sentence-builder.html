@@ -1,0 +1,52 @@
+@if (finished()) {
+  <div class="sb sb--done">
+    <app-icon class="sb__emoji" name="celebrate" size="xl" />
+    <p class="sb__done-text">Sentence game complete!</p>
+  </div>
+} @else if (total() === 0) {
+  <p class="sb__empty">This chapter's story is too short for this game.</p>
+} @else {
+  <div class="sb">
+    <p class="sb__progress">Sentence {{ index() + 1 }} of {{ total() }}</p>
+    <p class="sb__prompt">Tap the words to put the sentence in order.</p>
+
+    <!-- What the player has built so far -->
+    <div
+      class="sb__line"
+      [class.sb__line--right]="checked() && isCorrect()"
+      [class.sb__line--wrong]="checked() && !isCorrect()">
+      @for (word of built(); track $index) {
+        <span class="sb__word sb__word--placed">{{ word }}</span>
+      } @empty {
+        <span class="sb__placeholder">Your sentence appears here…</span>
+      }
+    </div>
+
+    <!-- Words still available -->
+    <div class="sb__pool">
+      @for (word of remaining(); track $index) {
+        <button type="button" class="sb__word" (click)="place(word)">{{ word }}</button>
+      }
+    </div>
+
+    @if (checked() && isCorrect()) {
+      <p class="sb__feedback sb__feedback--ok"><app-icon name="check-circle" size="sm" /> Perfect sentence!</p>
+      <app-button (clicked)="next()">
+        {{ index() < total() - 1 ? 'Next sentence' : 'Finish game' }}
+        <app-icon [name]="index() < total() - 1 ? 'forward' : 'celebrate'" size="sm" />
+      </app-button>
+    } @else {
+      @if (checked()) {
+        <p class="sb__feedback sb__feedback--no"><app-icon name="alert" size="sm" /> Not quite — try a different order.</p>
+      }
+      <div class="sb__actions">
+        <app-button variant="ghost" [disabled]="built().length === 0" (clicked)="undo()"><app-icon name="undo" size="sm" /> Undo
+        </app-button>
+        <app-button variant="secondary" [disabled]="built().length === 0" (clicked)="reset()">
+          Clear
+        </app-button>
+        <app-button [disabled]="remaining().length > 0" (clicked)="check()">Check</app-button>
+      </div>
+    }
+  </div>
+}

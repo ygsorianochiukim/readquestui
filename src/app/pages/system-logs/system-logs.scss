@@ -1,0 +1,164 @@
+@use 'abstracts' as *;
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 160px;
+
+    &--grow {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    select,
+    input {
+      @include form-control;
+    }
+  }
+
+  &__label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  &__button {
+    padding: 0.6rem var(--space-4);
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+
+    &--ghost {
+      background: transparent;
+      color: var(--color-primary);
+    }
+  }
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    vertical-align: top;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  &__when {
+    white-space: nowrap;
+    color: var(--color-text-soft);
+  }
+
+  &__details {
+    min-width: 260px;
+    color: var(--color-text);
+  }
+
+  &__ip {
+    color: var(--color-text-soft);
+    white-space: nowrap;
+  }
+}
+
+/* Action pill, tinted by the group the action belongs to. */
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--color-border);
+  color: var(--color-text);
+
+  &[data-tone='teacher'] {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+  }
+
+  &[data-tone='student'] {
+    background: var(--color-accent-soft);
+    color: #178a4c;
+  }
+
+  &[data-tone='reward'] {
+    background: var(--color-yellow-soft);
+    color: #7a7a12;
+  }
+
+  &[data-tone='learning'] {
+    background: var(--color-orange-soft);
+    color: #b5581f;
+  }
+
+  &[data-tone='speech'] {
+    background: var(--color-pink-soft);
+    color: #b32460;
+  }
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+
+  &__info {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__button {
+    padding: 0.5rem var(--space-4);
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 700;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+  }
+}

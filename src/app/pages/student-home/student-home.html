@@ -1,6 +1,6 @@
 <div class="hub">
   <div class="hub__hello">
-    <h1 class="hub__title">Hi {{ firstName() }}! <span class="hub__wave">👋</span></h1>
+    <h1 class="hub__title">Hi {{ firstName() }}! <app-icon class="hub__wave" name="wave" size="xl" /></h1>
     <p class="hub__subtitle">Ready for today's reading quest?</p>
   </div>
 
@@ -16,34 +16,34 @@
         </div>
 
         <div class="world__mascot">
-          <span class="world__bubble">Let's read! 📖</span>
-          <span class="world__buddy">🦉</span>
+          <span class="world__bubble">Let's read!</span>
+          <app-icon class="world__buddy" name="feather" size="xl" />
         </div>
 
         <div class="world__level"><span>LEVEL</span> <b>{{ playerLevel() }}</b></div>
 
         @if (continueBook(); as book) {
           <button type="button" class="world__play" (click)="enterWorld()">
-            <span class="world__play-ic">▶</span>
+            <app-icon class="world__play-ic" name="play" size="xl" />
             {{ book.percent > 0 ? 'Keep Reading' : 'Start' }}
             <span class="world__play-bar"><span [style.width.%]="book.percent"></span></span>
           </button>
         } @else if (books().length > 0) {
-          <div class="world__done">🏆 All quests complete!</div>
+          <div class="world__done"><app-icon name="trophy" size="sm" /> All quests complete!</div>
         } @else {
           <button type="button" class="world__play" (click)="goLibrary()">
-            <span class="world__play-ic">▶</span> Open the Map
+            <app-icon class="world__play-ic" name="play" size="xl" /> Open the Map
           </button>
         }
       </div>
 
       <!-- Weekly quests panel (floats over the scene on desktop) -->
       <aside class="wq">
-        <p class="wq__title">🎯 Weekly Quests <span class="wq__count">{{ questsDone() }}/{{ quests().length }}</span></p>
+        <p class="wq__title"><app-icon name="target" size="sm" /> Weekly Quests <span class="wq__count">{{ questsDone() }}/{{ quests().length }}</span></p>
         <ul class="wq__list">
           @for (quest of quests(); track quest.label) {
             <li class="wq__item" [class.wq__item--done]="quest.done">
-              <span class="wq__check">{{ quest.done ? '✓' : quest.icon }}</span>
+              <span class="wq__check"><app-icon [name]="quest.done ? 'check' : quest.icon" size="sm" /></span>
               <span class="wq__label">{{ quest.label }}</span>
             </li>
           }
@@ -54,32 +54,42 @@
     <!-- Player stats -->
     <div class="tiles">
       <div class="tile tile--coins">
-        <span class="tile__icon">⭐</span>
+        <app-icon class="tile__icon" name="star" size="xl" />
         <span class="tile__value">{{ points() }}</span>
         <span class="tile__label">Points</span>
       </div>
       <div class="tile tile--books">
-        <span class="tile__icon">📚</span>
+        <app-icon class="tile__icon" name="books" size="xl" />
         <span class="tile__value">{{ completedBooks() }}/{{ books().length }}</span>
         <span class="tile__label">Books</span>
       </div>
       <div class="tile tile--badges">
-        <span class="tile__icon">🏅</span>
+        <app-icon class="tile__icon" name="badges" size="xl" />
         <span class="tile__value">{{ badges().length }}</span>
         <span class="tile__label">Badges</span>
       </div>
       <div class="tile tile--progress">
-        <span class="tile__icon">🎯</span>
+        <app-icon class="tile__icon" name="target" size="xl" />
         <span class="tile__value">{{ overallPercent() }}%</span>
         <span class="tile__label">Progress</span>
       </div>
+      <button type="button" class="tile tile--trophies" (click)="goAchievements()">
+        <app-icon class="tile__icon" name="trophy" size="xl" />
+        <span class="tile__value">{{ achievementsUnlocked() }}/{{ achievementsTotal() }}</span>
+        <span class="tile__label">Trophies</span>
+      </button>
     </div>
+
+    <!-- Next milestone nudge -->
+    @if (nextAchievement(); as next) {
+      <app-next-trophy [achievement]="next" (opened)="goAchievements()" />
+    }
 
     <!-- Quests / books -->
     <section class="panel">
       <div class="panel__head">
-        <h2 class="panel__title">🗺️ Your Quests</h2>
-        <app-button variant="ghost" (clicked)="goLibrary()">Open map →</app-button>
+        <h2 class="panel__title"><app-icon name="map" size="sm" /> Your Quests</h2>
+        <app-button variant="ghost" (clicked)="goLibrary()">Open map <app-icon name="forward" size="sm" /></app-button>
       </div>
       @if (books().length === 0) {
         <p class="panel__empty">Your teacher hasn't assigned any books yet. Check back soon!</p>
@@ -92,7 +102,10 @@
               [class.mini--locked]="book.is_locked"
               [class.mini--done]="book.is_completed"
               (click)="openBook(book)">
-              <span class="mini__icon">{{ book.is_locked ? '🔒' : (book.is_completed ? '✅' : '📖') }}</span>
+              <app-icon
+                class="mini__icon"
+                [name]="book.is_locked ? 'locked' : (book.is_completed ? 'check-circle' : 'book')"
+                size="xl" />
               <span class="mini__title">{{ book.title }}</span>
               <span class="mini__pct">{{ book.is_locked ? 'Locked' : book.percent + '%' }}</span>
             </button>
@@ -103,14 +116,14 @@
 
     <!-- Treasure / badges -->
     <section class="panel">
-      <h2 class="panel__title">🏅 My Treasure</h2>
+      <h2 class="panel__title"><app-icon name="badges" size="sm" /> My Treasure</h2>
       @if (badges().length === 0) {
         <p class="panel__empty">No badges yet — keep reading to earn your first one!</p>
       } @else {
         <div class="treasure">
           @for (badge of badges(); track badge.id) {
             <div class="treasure__item" [title]="badge.description || badge.name">
-              <span class="treasure__icon">{{ badge.icon || '🏅' }}</span>
+              <app-icon class="treasure__icon" [name]="badge.icon || 'badges'" size="xl" />
               <span class="treasure__name">{{ badge.name }}</span>
             </div>
           }

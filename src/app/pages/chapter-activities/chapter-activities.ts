@@ -13,14 +13,19 @@ import {
   PronunciationAttempt,
   StudentQuizQuestion,
 } from '../../models';
-import { Alert, Button, Spinner } from '../../shared/components';
+import { Alert, Button, Spinner, Icon } from '../../shared/components';
 import { WordScramble } from './word-scramble/word-scramble';
+import { MissingWord } from './missing-word/missing-word';
+import { SentenceBuilder } from './sentence-builder/sentence-builder';
 
 type StepKey = 'story' | 'readaloud' | 'game' | 'quiz';
 
+/** Which game a chapter uses. Chapters rotate through the three in order. */
+type GameKind = 'scramble' | 'missing-word' | 'sentence-builder';
+
 @Component({
   selector: 'app-chapter-activities',
-  imports: [Alert, Button, Spinner, WordScramble],
+  imports: [Alert, Button, Spinner, WordScramble, MissingWord, SentenceBuilder, Icon],
   templateUrl: './chapter-activities.html',
   styleUrl: './chapter-activities.scss',
 })
@@ -35,6 +40,9 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
   readonly bookId = Number(this.route.snapshot.paramMap.get('bookId'));
   readonly chapterId = Number(this.route.snapshot.paramMap.get('chapterId'));
+
+  /** Matches ProgressService::PRONUNCIATION_PASS on the API. */
+  readonly passMark = 60;
 
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
@@ -54,13 +62,35 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly activeStep = signal<StepKey>('story');
 
   readonly steps = computed(() => [
-    { key: 'story' as const, label: 'Story', icon: '📖', done: this.storyRead() },
-    { key: 'readaloud' as const, label: 'Read Aloud', icon: '🎤', done: this.pronunciationPassed() },
-    { key: 'game' as const, label: 'Game', icon: '🎮', done: this.gameCompleted() },
-    { key: 'quiz' as const, label: 'Quiz', icon: '🧠', done: this.quizPassed() },
+    { key: 'story' as const, label: 'Story', icon: 'book', done: this.storyRead() },
+    { key: 'readaloud' as const, label: 'Read Aloud', icon: 'mic', done: this.pronunciationPassed() },
+    { key: 'game' as const, label: 'Game', icon: 'game', done: this.gameCompleted() },
+    { key: 'quiz' as const, label: 'Quiz', icon: 'quiz', done: this.quizPassed() },
   ]);
 
   readonly gameWords = computed(() => this.pickWords(this.storyText() ?? ''));
+  readonly gameSentences = computed(() => this.pickSentences(this.storyText() ?? ''));
+
+  /**
+   * Chapters take turns across the three games, so a pupil meets a different
+   * activity as they move through a book.
+   */
+  readonly gameKind = computed<GameKind>(() => {
+    const kinds: GameKind[] = ['scramble', 'missing-word', 'sentence-builder'];
+    const number = this.chapterNumber();
+    return kinds[(Math.max(1, number) - 1) % kinds.length];
+  });
+
+  readonly gameTitle = computed(() => {
+    switch (this.gameKind()) {
+      case 'missing-word':
+        return 'Missing word';
+      case 'sentence-builder':
+        return 'Build the sentence';
+      default:
+        return 'Word scramble';
+    }
+  });
 
   // Narration
   readonly narrating = signal(false);
@@ -190,7 +220,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
         this.pronunciationService.assess(audio, { chapterId: this.chapterId }).subscribe({
           next: (response) => {
             this.result.set(response.data);
-            if ((response.data.pron_score ?? 0) >= 60) {
+            if ((response.data.pron_score ?? 0) >= this.passMark) {
               this.pronunciationPassed.set(true);
             }
             this.recordingState.set('idle');
@@ -289,6 +319,14 @@ export class ChapterActivities implements OnInit, OnDestroy {
       return ['read', 'story', 'quest', 'learn', 'books'];
     }
     return words;
+  }
+
+  /** Split the story into clean sentences for the word/sentence games. */
+  private pickSentences(text: string): string[] {
+    return text
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.replace(/\s+/g, ' ').trim())
+      .filter((sentence) => sentence.split(' ').length >= 4);
   }
 
   private assessError(status: number): string {

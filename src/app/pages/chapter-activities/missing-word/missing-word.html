@@ -1,0 +1,44 @@
+@if (finished()) {
+  <div class="mw mw--done">
+    <app-icon class="mw__emoji" name="celebrate" size="xl" />
+    <p class="mw__done-text">Missing word game complete!</p>
+    @if (total() > 0) {
+      <p class="mw__score">You got {{ correctCount() }} of {{ total() }} right.</p>
+    }
+  </div>
+} @else if (total() === 0) {
+  <p class="mw__empty">This chapter's story is too short for this game.</p>
+} @else if (current(); as round) {
+  <div class="mw">
+    <p class="mw__progress">Sentence {{ index() + 1 }} of {{ total() }}</p>
+    <p class="mw__prompt">Which word is missing?</p>
+
+    <p class="mw__sentence">{{ round.masked }}</p>
+
+    <div class="mw__choices">
+      @for (choice of round.choices; track choice) {
+        <button
+          type="button"
+          class="mw__choice"
+          [class.mw__choice--picked]="picked() === choice"
+          [class.mw__choice--right]="picked() === choice && isCorrect()"
+          [class.mw__choice--wrong]="picked() === choice && !isCorrect()"
+          (click)="pick(choice)">
+          {{ choice }}
+        </button>
+      }
+    </div>
+
+    @if (picked() !== null) {
+      @if (isCorrect()) {
+        <p class="mw__feedback mw__feedback--ok"><app-icon name="check-circle" size="sm" /> That's it!</p>
+        <app-button (clicked)="next()">
+          {{ index() < total() - 1 ? 'Next sentence' : 'Finish game' }}
+        <app-icon [name]="index() < total() - 1 ? 'forward' : 'celebrate'" size="sm" />
+        </app-button>
+      } @else {
+        <p class="mw__feedback mw__feedback--no"><app-icon name="alert" size="sm" /> Not that one — try again!</p>
+      }
+    }
+  </div>
+}

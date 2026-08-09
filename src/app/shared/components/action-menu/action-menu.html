@@ -1,6 +1,10 @@
 <button type="button" class="action-menu__trigger" (click)="toggle($event)">
   {{ label() }}
-  <span class="action-menu__caret" [class.action-menu__caret--open]="open()">▾</span>
+  <app-icon
+    class="action-menu__caret"
+    [class.action-menu__caret--open]="open()"
+    name="forward"
+    size="sm" />
 </button>
 
 @if (open()) {
@@ -15,6 +19,9 @@
         class="action-menu__item"
         [class.action-menu__item--danger]="item.danger"
         (click)="choose(item)">
+        @if (item.icon) {
+          <app-icon [name]="item.icon" size="sm" />
+        }
         {{ item.label }}
       </button>
     }

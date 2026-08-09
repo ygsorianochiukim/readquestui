@@ -1,8 +1,11 @@
 import { Component, ElementRef, HostListener, inject, input, output, signal } from '@angular/core';
+import { Icon } from '../icon/icon';
+import { IconName } from '../icon/icons';
 
 export interface ActionMenuItem {
   key: string;
   label: string;
+  icon?: IconName;
   danger?: boolean;
 }
 
@@ -13,6 +16,7 @@ export interface ActionMenuItem {
  */
 @Component({
   selector: 'app-action-menu',
+  imports: [Icon],
   templateUrl: './action-menu.html',
   styleUrl: './action-menu.scss',
 })

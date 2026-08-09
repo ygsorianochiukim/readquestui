@@ -1,0 +1,88 @@
+<div class="ach">
+  <div class="ach__hello">
+    <h1 class="ach__title"><app-icon name="trophy" size="sm" /> My Achievements</h1>
+    <p class="ach__subtitle">Every quest you finish brings you closer to a new trophy!</p>
+  </div>
+
+  @if (loading()) {
+    <app-spinner label="Loading your trophies…" />
+  } @else if (summary(); as summary) {
+    <!-- Trophy case summary -->
+    <section class="case">
+      <div class="case__ring" [style.--pct]="percent()">
+        <span class="case__ring-value">{{ summary.unlocked }}<small>/{{ summary.total }}</small></span>
+        <span class="case__ring-label">unlocked</span>
+      </div>
+
+      <div class="case__next">
+        @if (nextUp(); as next) {
+          <p class="case__next-label">Closest to unlocking</p>
+          <p class="case__next-name">{{ next.icon }} {{ next.name }}</p>
+          <p class="case__next-goal">{{ goal(next) }}</p>
+          <div class="bar bar--big">
+            <span class="bar__fill" [style.width.%]="next.percent"></span>
+          </div>
+        } @else {
+          <p class="case__next-label"><app-icon name="celebrate" size="sm" /> Amazing!</p>
+          <p class="case__next-name">You unlocked everything!</p>
+        }
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <div class="tabs" role="tablist">
+      <button
+        type="button"
+        class="tabs__tab"
+        [class.tabs__tab--active]="filter() === 'all'"
+        (click)="setFilter('all')">
+        All
+      </button>
+      <button
+        type="button"
+        class="tabs__tab"
+        [class.tabs__tab--active]="filter() === 'unlocked'"
+        (click)="setFilter('unlocked')">
+        Unlocked ({{ summary.unlocked }})
+      </button>
+      <button
+        type="button"
+        class="tabs__tab"
+        [class.tabs__tab--active]="filter() === 'locked'"
+        (click)="setFilter('locked')">
+        To do ({{ summary.total - summary.unlocked }})
+      </button>
+    </div>
+
+    <!-- Trophy grid -->
+    <div class="grid">
+      @for (achievement of visible(); track achievement.id) {
+        <article class="card" [class.card--locked]="!achievement.is_unlocked">
+          <div class="card__medal">
+            <app-icon
+              class="card__icon"
+              [name]="achievement.is_unlocked ? (achievement.icon || 'trophy') : 'locked'"
+              size="2xl" />
+            @if (achievement.is_unlocked) {
+              <app-icon class="card__check" name="check" size="xl" />
+            }
+          </div>
+
+          <h2 class="card__name">{{ achievement.name }}</h2>
+          <p class="card__desc">{{ achievement.description }}</p>
+
+          <div class="bar">
+            <span class="bar__fill" [style.width.%]="achievement.percent"></span>
+          </div>
+          <p class="card__goal">{{ goal(achievement) }}</p>
+
+          @if (achievement.points > 0) {
+            <span class="card__points">+{{ achievement.points }} pts</span>
+          }
+        </article>
+      } @empty {
+        <p class="grid__empty">Nothing here yet — keep reading!</p>
+      }
+    </div>
+  }
+</div>

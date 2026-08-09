@@ -12,6 +12,7 @@ import { AppShell, ShellNavItem } from '../shared/components';
       [name]="fullName()"
       subtitle="Teacher Dashboard"
       [initials]="initials()"
+      [avatarUrl]="avatarUrl()"
       (logout)="logout()">
       <router-outlet />
     </app-shell>
@@ -24,11 +25,12 @@ export class Layout implements OnInit {
   readonly teacher = this.auth.teacher;
 
   readonly navItems: ShellNavItem[] = [
-    { label: 'Dashboard', path: '/dashboard/home', icon: '📊' },
-    { label: 'Students', path: '/dashboard/students', icon: '🧒' },
-    { label: 'Books & Content', path: '/dashboard/books', icon: '📚' },
-    { label: 'Badges & Rewards', path: '/dashboard/badges', icon: '🏅' },
-    { label: 'My Profile', path: '/dashboard/profile', icon: '👤' },
+    { label: 'Dashboard', path: '/dashboard/home', icon: 'dashboard' },
+    { label: 'Students', path: '/dashboard/students', icon: 'students' },
+    { label: 'Books & Content', path: '/dashboard/books', icon: 'books' },
+    { label: 'Badges & Rewards', path: '/dashboard/badges', icon: 'badges' },
+    { label: 'Activity Log', path: '/dashboard/activity-log', icon: 'log' },
+    { label: 'My Profile', path: '/dashboard/profile', icon: 'profile' },
   ];
 
   readonly fullName = computed(() => {
@@ -43,6 +45,8 @@ export class Layout implements OnInit {
     }
     return `${teacher.first_name?.[0] ?? ''}${teacher.last_name?.[0] ?? ''}`.toUpperCase();
   });
+
+  readonly avatarUrl = computed(() => this.teacher()?.profile_image_url ?? null);
 
   ngOnInit(): void {
     if (!this.teacher()) {

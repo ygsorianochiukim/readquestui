@@ -1,5 +1,5 @@
 <div class="page-actions page-actions--split">
-  <a class="back-link" routerLink="/dashboard/books">← Back to books</a>
+  <a class="back-link" routerLink="/dashboard/books"><app-icon name="back" size="sm" /> Back to books</a>
   <app-button (clicked)="openCreateForm()">+ Add Chapter</app-button>
 </div>
 
@@ -9,7 +9,7 @@
   <app-spinner label="Loading chapters…" />
 } @else if (chapters().length === 0) {
   <app-empty-state
-    icon="📖"
+    icon="book"
     title="No chapters yet"
     message="Add the first chapter with its story and quiz.">
     <app-button (clicked)="openCreateForm()">+ Add Chapter</app-button>
@@ -31,9 +31,9 @@
             @if (activeNarrationId() === chapter.id && narrationLoading()) {
               Loading…
             } @else if (activeNarrationId() === chapter.id) {
-              ⏸ Stop
+              <app-icon name="pause" size="sm" /> Stop
             } @else {
-              🔊 Listen
+              <app-icon name="listen" size="sm" /> Listen
             }
           </app-button>
           <a class="chapter-row__quiz" [routerLink]="['/dashboard/chapters', chapter.id, 'quiz']">
@@ -61,8 +61,30 @@
       </app-form-field>
     </div>
 
-    <app-form-field label="Story text" hint="The DepEd story content for this chapter.">
+    <app-form-field
+      label="Story text"
+      hint="Type the DepEd story, or scan the printed page and edit what it reads.">
       <textarea name="story_text" [(ngModel)]="chapterForm.story_text" rows="5"></textarea>
+
+      <div class="scan">
+        <input
+          #scanInput
+          type="file"
+          accept="image/*"
+          hidden
+          (change)="onScanSelected($event)" />
+        <app-button variant="secondary" [disabled]="scanning()" (clicked)="scanInput.click()">
+          <app-icon name="scan" size="sm" />
+          {{
+            scanning()
+              ? 'Reading the page…'
+              : (chapterForm.story_text ? 'Scan another page' : 'Scan printed page')
+          }}
+        </app-button>
+        @if (scanMessage()) {
+          <span class="scan__note">{{ scanMessage() }}</span>
+        }
+      </div>
     </app-form-field>
 
     <app-form-field label="Illustration (optional)">
@@ -71,7 +93,7 @@
           @if (chapterForm.image_url) {
             <img [src]="chapterForm.image_url" alt="Chapter illustration" />
           } @else {
-            <span>🖼️</span>
+            <app-icon name="image" size="lg" />
           }
         </div>
         <input

@@ -8,6 +8,7 @@ import { RewardService } from '../../services/reward/reward';
 import { PronunciationService } from '../../services/pronunciation/pronunciation';
 import { AssignmentService } from '../../services/assignment/assignment';
 import { BookService } from '../../services/book/book';
+import { UploadService } from '../../services/upload/upload';
 import { Student, Badge as BadgeModel, Book, PronunciationAttempt } from '../../models';
 import {
   ActionMenu,
@@ -20,6 +21,7 @@ import {
   FormField,
   Modal,
   Spinner,
+  Icon,
 } from '../../shared/components';
 
 @Component({
@@ -35,6 +37,7 @@ import {
     FormField,
     Modal,
     Spinner,
+    Icon
   ],
   templateUrl: './students.html',
   styleUrl: './students.scss',
@@ -46,6 +49,7 @@ export class Students implements OnInit {
   private pronunciationService = inject(PronunciationService);
   private assignmentService = inject(AssignmentService);
   private bookService = inject(BookService);
+  private uploadService = inject(UploadService);
   private router = inject(Router);
 
   readonly students = signal<Student[]>([]);
@@ -54,16 +58,17 @@ export class Students implements OnInit {
   readonly isFormOpen = signal(false);
   readonly editingStudentId = signal<number | null>(null);
   readonly errorMessage = signal<string | null>(null);
+  readonly photoUploading = signal(false);
 
   studentForm: StudentPayload = this.emptyForm();
 
   readonly rowActions: ActionMenuItem[] = [
-    { key: 'progress', label: '📈 Progress' },
-    { key: 'books', label: '📚 Assign Books' },
-    { key: 'scores', label: '🎤 Scores' },
-    { key: 'rewards', label: '🏅 Rewards' },
-    { key: 'edit', label: '✏️ Edit' },
-    { key: 'delete', label: '🗑 Delete', danger: true },
+    { key: 'progress', label: 'Progress' },
+    { key: 'books', label: 'Assign Books' },
+    { key: 'scores', label: 'Scores' },
+    { key: 'rewards', label: 'Rewards' },
+    { key: 'edit', label: 'Edit' },
+    { key: 'delete', label: 'Delete', danger: true },
   ];
 
   // ---- Rewards modal state ----
@@ -148,6 +153,7 @@ export class Students implements OnInit {
       password: '',
       reading_level: student.reading_level ?? '',
       status: student.status,
+      profile_image_url: student.profile_image_url ?? '',
     };
     this.errorMessage.set(null);
     this.isFormOpen.set(true);
@@ -356,6 +362,30 @@ export class Students implements OnInit {
     this.router.navigate(['/dashboard/students', student.id, 'progress']);
   }
 
+  /** Upload a photo for the pupil being created or edited. */
+  onPhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+
+    this.photoUploading.set(true);
+    this.errorMessage.set(null);
+
+    this.uploadService.uploadImage(file).subscribe({
+      next: (result) => {
+        this.studentForm.profile_image_url = result.data.url;
+        this.photoUploading.set(false);
+      },
+      error: (response: HttpErrorResponse) => {
+        this.photoUploading.set(false);
+        this.errorMessage.set(this.readError(response));
+      },
+    });
+  }
+
   private emptyForm(): StudentPayload {
     return {
       first_name: '',
@@ -364,6 +394,7 @@ export class Students implements OnInit {
       password: '',
       reading_level: '',
       status: 'active',
+      profile_image_url: '',
     };
   }
 

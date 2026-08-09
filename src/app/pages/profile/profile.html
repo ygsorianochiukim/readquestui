@@ -5,6 +5,28 @@
     <app-alert [message]="errorMessage()" variant="error" />
     <app-alert [message]="successMessage()" variant="success" />
 
+    <div class="avatar">
+      <div class="avatar__preview">
+        @if (form.profile_image_url) {
+          <img [src]="form.profile_image_url" alt="Profile photo" />
+        } @else {
+          <app-icon name="profile" size="lg" />
+        }
+      </div>
+      <div class="avatar__actions">
+        <input #photoInput type="file" accept="image/*" hidden (change)="onPhotoSelected($event)" />
+        <app-button
+          variant="secondary"
+          [disabled]="photoUploading()"
+          (clicked)="photoInput.click()">
+          {{ photoUploading() ? 'Uploading…' : (form.profile_image_url ? 'Change photo' : 'Upload photo') }}
+        </app-button>
+        @if (form.profile_image_url) {
+          <app-button variant="ghost" (clicked)="removePhoto()">Remove</app-button>
+        }
+      </div>
+    </div>
+
     <form class="form-grid" (ngSubmit)="save()">
       <app-form-field label="First name">
         <input name="first_name" [(ngModel)]="form.first_name" required />

@@ -16,7 +16,7 @@
           [routerLink]="item.path"
           routerLinkActive="sidebar__link--active"
           (click)="closeSidebar()">
-          <span class="sidebar__icon">{{ item.icon }}</span>
+          <app-icon class="sidebar__icon" [name]="item.icon" size="lg" />
           {{ item.label }}
         </a>
       }
@@ -32,18 +32,27 @@
           class="topbar__menu"
           (click)="toggleSidebar()"
           aria-label="Toggle menu">
-          ☰
+          <app-icon name="menu" size="lg" />
         </button>
         <h1 class="topbar__title">{{ pageTitle() }}</h1>
       </div>
 
       <div class="topbar__right">
         <div class="topbar__profile">
-          <div class="topbar__avatar">{{ initials() }}</div>
+          <div class="topbar__avatar">
+            @if (avatarUrl()) {
+              <img [src]="avatarUrl()" [alt]="name()" />
+            } @else {
+              {{ initials() }}
+            }
+          </div>
           <p class="topbar__fullname">{{ name() }}</p>
         </div>
 
-        <button type="button" class="topbar__logout" (click)="logout.emit()">Log out</button>
+        <button type="button" class="topbar__logout" (click)="logout.emit()">
+          <app-icon name="logout" size="sm" />
+          Log out
+        </button>
       </div>
     </header>
 

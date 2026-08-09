@@ -1,6 +1,6 @@
 import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Button } from '../../../shared/components';
+import { Button, Icon } from '../../../shared/components';
 
 /**
  * A small vocabulary game: the player unscrambles words drawn from the
@@ -8,7 +8,7 @@ import { Button } from '../../../shared/components';
  */
 @Component({
   selector: 'app-word-scramble',
-  imports: [FormsModule, Button],
+  imports: [FormsModule, Button, Icon],
   templateUrl: './word-scramble.html',
   styleUrl: './word-scramble.scss',
 })

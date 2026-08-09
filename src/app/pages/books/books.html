@@ -8,7 +8,7 @@
   <app-spinner label="Loading books…" />
 } @else if (books().length === 0) {
   <app-empty-state
-    icon="📚"
+    icon="books"
     title="No books yet"
     message="Add the DepEd Leveled Reader Books so pupils have something to read.">
     <app-button (clicked)="openCreateForm()">+ Add Book</app-button>
@@ -22,7 +22,7 @@
             @if (book.cover_image_url) {
               <img [src]="book.cover_image_url" [alt]="book.title" />
             } @else {
-              <span class="entity-card__thumb-fallback">📖</span>
+              <app-icon class="entity-card__thumb-fallback" name="book" size="xl" />
             }
           </div>
           <div class="entity-card__heading">
@@ -98,7 +98,7 @@
           @if (bookForm.cover_image_url) {
             <img [src]="bookForm.cover_image_url" alt="Cover" />
           } @else {
-            <span>📖</span>
+            <app-icon name="book" size="lg" />
           }
         </div>
         <input

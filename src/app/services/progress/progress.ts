@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   ApiResponse,
   BookOverview,
+  BookPageProgress,
   BookProgress,
   ChapterProgress,
   QuizResult,
@@ -45,6 +46,21 @@ export class ProgressService {
   markStoryRead(chapterId: number): Observable<ApiResponse<ChapterProgress>> {
     return this.http.post<ApiResponse<ChapterProgress>>(
       `${this.base}/student/chapters/${chapterId}/story-read`,
+      {},
+    );
+  }
+
+  /** Page-by-page progress for a scanned book. */
+  bookPages(bookId: number): Observable<ApiResponse<BookPageProgress>> {
+    return this.http.get<ApiResponse<BookPageProgress>>(
+      `${this.base}/student/books/${bookId}/pages`,
+    );
+  }
+
+  /** Mark a scanned page as read; returns the book's refreshed page progress. */
+  markPageRead(pageId: number): Observable<ApiResponse<BookPageProgress>> {
+    return this.http.post<ApiResponse<BookPageProgress>>(
+      `${this.base}/student/pages/${pageId}/read`,
       {},
     );
   }

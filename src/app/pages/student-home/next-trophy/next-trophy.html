@@ -1,0 +1,16 @@
+<button type="button" class="nudge" (click)="opened.emit()">
+  <span class="nudge__icon">{{ achievement().icon }}</span>
+
+  <span class="nudge__body">
+    <span class="nudge__label">Next trophy</span>
+    <span class="nudge__name">{{ achievement().name }}</span>
+    <span class="nudge__bar">
+      <span class="nudge__fill" [style.width.%]="achievement().percent"></span>
+    </span>
+    <span class="nudge__goal">
+      {{ achievement().current }} / {{ achievement().threshold }} {{ achievement().metric_label }}
+    </span>
+  </span>
+
+  <app-icon class="nudge__go" name="forward" size="xl" />
+</button>

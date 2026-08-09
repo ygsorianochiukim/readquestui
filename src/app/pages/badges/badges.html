@@ -8,7 +8,7 @@
   <app-spinner label="Loading badges…" />
 } @else if (badges().length === 0) {
   <app-empty-state
-    icon="🏅"
+    icon="badges"
     title="No badges yet"
     message="Create badges like “Bookworm” or “Quiz Master” to reward your pupils.">
     <app-button (clicked)="openCreateForm()">+ Add Badge</app-button>
@@ -19,7 +19,7 @@
       <article class="entity-card">
         <div class="entity-card__head">
           <div class="entity-card__thumb">
-            <span class="entity-card__thumb-fallback">{{ badge.icon || '🏅' }}</span>
+            <app-icon class="entity-card__thumb-fallback" [name]="badge.icon || 'badges'" size="xl" />
           </div>
           <div class="entity-card__heading">
             <h3 class="entity-card__title">{{ badge.name }}</h3>
@@ -27,7 +27,7 @@
           </div>
         </div>
 
-        <div class="entity-card__bar entity-card__bar--static">⭐ {{ badge.points }} points</div>
+        <div class="entity-card__bar entity-card__bar--static"><app-icon name="star" size="sm" /> {{ badge.points }} points</div>
 
         <div class="entity-card__footer">
           <button type="button" class="entity-card__action" (click)="openEditForm(badge)">Update</button>
@@ -53,8 +53,17 @@
       <input name="name" [(ngModel)]="badgeForm.name" required />
     </app-form-field>
 
-    <app-form-field label="Icon (emoji)" hint="For example: 🏅">
-      <input name="icon" [(ngModel)]="badgeForm.icon" />
+    <app-form-field label="Icon" hint="Pick the symbol shown on the badge.">
+      <div class="icon-picker">
+        <span class="icon-picker__preview">
+          <app-icon [name]="badgeForm.icon || 'badges'" size="lg" />
+        </span>
+        <select name="icon" [(ngModel)]="badgeForm.icon">
+          @for (option of iconNames; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </div>
     </app-form-field>
 
     <app-form-field class="form-grid__full" label="Description">

@@ -1,0 +1,124 @@
+@use 'abstracts' as *;
+
+.sb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+  padding: var(--space-4) 0;
+
+  &--done {
+    padding: var(--space-6) 0;
+  }
+
+  &__emoji {
+    font-size: 3rem;
+  }
+
+  &__done-text {
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
+    color: var(--color-success);
+  }
+
+  &__empty {
+    color: var(--color-text-muted);
+    text-align: center;
+    padding: var(--space-5) 0;
+  }
+
+  &__progress {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__prompt {
+    font-weight: 700;
+  }
+
+  &__line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    max-width: 46ch;
+    min-height: 72px;
+    padding: var(--space-3);
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+
+    &--right {
+      border-style: solid;
+      border-color: var(--color-success);
+      background: var(--color-success-soft);
+    }
+
+    &--wrong {
+      border-style: solid;
+      border-color: var(--color-danger);
+      background: var(--color-danger-soft);
+    }
+  }
+
+  &__placeholder {
+    color: var(--color-text-soft);
+    font-style: italic;
+  }
+
+  &__pool {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 48px;
+  }
+
+  &__word {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    background: var(--color-yellow-soft);
+    border: 2px solid var(--color-yellow);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: transform 0.12s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+
+    &--placed {
+      background: var(--color-surface);
+      border-color: var(--color-primary);
+      cursor: default;
+
+      &:hover {
+        transform: none;
+      }
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  &__feedback {
+    font-weight: 700;
+
+    &--ok {
+      color: var(--color-success);
+    }
+
+    &--no {
+      color: var(--color-danger);
+    }
+  }
+}

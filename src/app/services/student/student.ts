@@ -11,6 +11,7 @@ export interface StudentPayload {
   password?: string;
   reading_level?: string | null;
   status?: string;
+  profile_image_url?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -1,3 +1,4 @@
+import { AchievementSummary } from '../achievement/achievement.model';
 import { Badge } from '../badge/badge.model';
 import { PronunciationAttempt } from '../pronunciation-attempt/pronunciation-attempt.model';
 
@@ -119,5 +120,6 @@ export interface StudentProgressReport {
     percent: number;
   };
   badges: Badge[];
+  achievements: AchievementSummary;
   pronunciation: PronunciationAttempt[];
 }

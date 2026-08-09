@@ -5,25 +5,25 @@
     <app-card>
       <div class="stat">
         <span class="stat__value">{{ dash.stats.students }}</span>
-        <span class="stat__label">🧒 Students</span>
+        <span class="stat__label"><app-icon name="students" size="sm" /> Students</span>
       </div>
     </app-card>
     <app-card>
       <div class="stat">
         <span class="stat__value">{{ dash.stats.active_books }}</span>
-        <span class="stat__label">📚 Active books</span>
+        <span class="stat__label"><app-icon name="books" size="sm" /> Active books</span>
       </div>
     </app-card>
     <app-card>
       <div class="stat">
         <span class="stat__value">{{ dash.stats.average_completion }}%</span>
-        <span class="stat__label">📈 Avg. completion</span>
+        <span class="stat__label"><app-icon name="gauge" size="sm" /> Avg. completion</span>
       </div>
     </app-card>
     <app-card>
       <div class="stat" [class.stat--alert]="dash.stats.pending_validations > 0">
         <span class="stat__value">{{ dash.stats.pending_validations }}</span>
-        <span class="stat__label">🎤 Scores to validate</span>
+        <span class="stat__label"><app-icon name="mic" size="sm" /> Scores to validate</span>
       </div>
     </app-card>
   </div>
@@ -31,12 +31,17 @@
   <app-card>
     <div class="section-head">
       <h3 class="section-head__title">Class progress</h3>
-      <app-button variant="ghost" (clicked)="goStudents()">Manage students →</app-button>
+      <div class="section-head__actions">
+        <app-button variant="secondary" [disabled]="exporting()" (clicked)="exportClassReport()">
+          <app-icon name="download" size="sm" /> {{ exporting() ? 'Preparing…' : 'Export CSV' }}
+        </app-button>
+        <app-button variant="ghost" (clicked)="goStudents()">Manage students <app-icon name="forward" size="sm" /></app-button>
+      </div>
     </div>
 
     @if (dash.students.length === 0) {
       <app-empty-state
-        icon="🧒"
+        icon="students"
         title="No students yet"
         message="Add pupils and assign books to start tracking reading progress." />
     } @else {
@@ -61,7 +66,7 @@
                 <td class="table__progress">
                   <app-progress-bar [percent]="student.percent" />
                 </td>
-                <td>⭐ {{ student.points }}</td>
+                <td><app-icon name="star" size="sm" /> {{ student.points }}</td>
                 <td class="table__right">
                   <app-button variant="ghost" (clicked)="goProgress(student)">View</app-button>
                 </td>
@@ -73,5 +78,5 @@
     }
   </app-card>
 } @else {
-  <app-empty-state icon="📊" title="Dashboard unavailable" message="Could not load your dashboard." />
+  <app-empty-state icon="dashboard" title="Dashboard unavailable" message="Could not load your dashboard." />
 }

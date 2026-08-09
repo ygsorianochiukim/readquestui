@@ -1,19 +1,19 @@
 @if (loading()) {
   <app-spinner label="Opening your book…" />
 } @else if (!book()) {
-  <app-empty-state icon="📕" title="Book not found" message="This book isn't available right now." />
+  <app-empty-state icon="book" title="Book not found" message="This book isn't available right now." />
 } @else {
   <!-- Minimal floating back button (no heavy header) -->
-  <button type="button" class="mapback" (click)="back()" aria-label="Back to library">←</button>
+  <button type="button" class="mapback" (click)="back()" aria-label="Back to library"><app-icon name="back" size="lg" /></button>
 
   @if (chapters().length === 0) {
     <app-empty-state
-      icon="🗺️"
+      icon="map"
       title="No levels yet"
       message="Your teacher hasn't added chapters to this adventure." />
   } @else {
     <div class="worldmap" [style.height.px]="worldHeight()">
-      <span class="worldmap__flag" aria-hidden="true">🏁</span>
+      <app-icon class="worldmap__flag" name="flag-finish" size="xl" />
 
       <svg class="worldmap__trail" [attr.viewBox]="viewBox()" preserveAspectRatio="none" aria-hidden="true">
         <path class="worldmap__edge" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
@@ -24,7 +24,7 @@
       @for (node of levels(); track node.chapter.id) {
         <div class="spot spot--{{ node.state }}" [style.left.%]="node.xPercent" [style.top.px]="node.yPx">
           @if (node.state === 'current') {
-            <span class="spot__buddy" aria-hidden="true">🦉</span>
+            <app-icon class="spot__buddy" name="buddy" size="lg" />
           }
 
           <button
@@ -34,9 +34,9 @@
             [attr.aria-label]="'Level ' + node.level + ': ' + node.chapter.title"
             (click)="open(node.chapter)">
             @if (node.state === 'locked') {
-              <span class="spot__icon">🔒</span>
+              <app-icon class="spot__icon" name="locked" size="xl" />
             } @else if (node.state === 'completed') {
-              <span class="spot__icon">⭐</span>
+              <app-icon class="spot__icon" name="star" size="xl" />
             } @else {
               <span class="spot__num">{{ node.level }}</span>
             }
@@ -45,7 +45,7 @@
           <div class="spot__card">
             <p class="spot__name">{{ node.chapter.title }}</p>
             @if (node.state === 'locked') {
-              <p class="spot__hint">🔒 Locked</p>
+              <p class="spot__hint"><app-icon name="locked" size="sm" /> Locked</p>
             } @else if (node.state === 'completed') {
               <p class="spot__hint spot__hint--done">Completed!</p>
             } @else {

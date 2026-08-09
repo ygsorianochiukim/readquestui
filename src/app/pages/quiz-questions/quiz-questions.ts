@@ -12,6 +12,7 @@ import {
   FormField,
   Modal,
   Spinner,
+  Icon,
 } from '../../shared/components';
 
 @Component({
@@ -24,6 +25,7 @@ import {
     FormField,
     Modal,
     Spinner,
+    Icon
   ],
   templateUrl: './quiz-questions.html',
   styleUrl: './quiz-questions.scss',

@@ -2,14 +2,14 @@
   <app-spinner label="Loading your adventure…" />
 } @else if (books().length === 0) {
   <app-empty-state
-    icon="📚"
+    icon="books"
     title="No books yet"
     message="Your teacher hasn't assigned any books to you yet. Check back soon!" />
 } @else {
   <!-- The scrollable adventure world -->
   <div class="worldmap" [style.height.px]="worldHeight()">
     <!-- Checkered goal flag at the top of the path -->
-    <span class="worldmap__flag" aria-hidden="true">🏁</span>
+    <app-icon class="worldmap__flag" name="flag-finish" size="xl" />
 
     <!-- The candy road -->
     <svg class="worldmap__trail" [attr.viewBox]="viewBox()" preserveAspectRatio="none" aria-hidden="true">
@@ -21,7 +21,7 @@
     @for (node of levels(); track node.book.id) {
       <div class="spot spot--{{ node.state }}" [style.left.%]="node.xPercent" [style.top.px]="node.yPx">
         @if (node.state === 'current') {
-          <span class="spot__buddy" aria-hidden="true">🦉</span>
+          <app-icon class="spot__buddy" name="buddy" size="lg" />
         }
 
         <button
@@ -31,9 +31,9 @@
           [attr.aria-label]="'Level ' + node.level + ': ' + node.book.title"
           (click)="open(node.book)">
           @if (node.state === 'locked') {
-            <span class="spot__icon">🔒</span>
+            <app-icon class="spot__icon" name="locked" size="xl" />
           } @else if (node.state === 'completed') {
-            <span class="spot__icon">⭐</span>
+            <app-icon class="spot__icon" name="star" size="xl" />
           } @else {
             <span class="spot__num">{{ node.level }}</span>
           }
@@ -42,7 +42,7 @@
         <div class="spot__card">
           <p class="spot__name">{{ node.book.title }}</p>
           @if (node.state === 'locked') {
-            <p class="spot__hint">🔒 Locked</p>
+            <p class="spot__hint"><app-icon name="locked" size="sm" /> Locked</p>
           } @else if (node.state === 'completed') {
             <p class="spot__hint spot__hint--done">Completed!</p>
           } @else {

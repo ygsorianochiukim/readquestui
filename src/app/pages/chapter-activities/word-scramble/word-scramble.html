@@ -1,6 +1,6 @@
 @if (finished()) {
   <div class="game game--done">
-    <span class="game__emoji">🎉</span>
+    <app-icon class="game__emoji" name="celebrate" size="xl" />
     <p class="game__done-text">Word game complete!</p>
   </div>
 } @else if (total() === 0) {
@@ -27,13 +27,14 @@
       autocomplete="off" />
 
     @if (feedback() === 'correct') {
-      <p class="game__feedback game__feedback--ok">✅ Correct!</p>
+      <p class="game__feedback game__feedback--ok"><app-icon name="check-circle" size="sm" /> Correct!</p>
       <app-button (clicked)="nextWord()">
-        {{ index() < total() - 1 ? 'Next word →' : 'Finish game 🎉' }}
+        {{ index() < total() - 1 ? 'Next word' : 'Finish game' }}
+      <app-icon [name]="index() < total() - 1 ? 'forward' : 'celebrate'" size="sm" />
       </app-button>
     } @else {
       @if (feedback() === 'wrong') {
-        <p class="game__feedback game__feedback--no">❌ Not quite — try again!</p>
+        <p class="game__feedback game__feedback--no"><app-icon name="alert" size="sm" /> Not quite — try again!</p>
       }
       <app-button (clicked)="check()" [disabled]="!guess().trim()">Check</app-button>
     }

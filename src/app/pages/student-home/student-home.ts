@@ -3,12 +3,14 @@ import { Router } from '@angular/router';
 import { StudentAuthService } from '../../services/student-auth/student-auth';
 import { RewardService } from '../../services/reward/reward';
 import { ProgressService } from '../../services/progress/progress';
-import { Badge, BookOverview } from '../../models';
-import { Button, Spinner } from '../../shared/components';
+import { AchievementService } from '../../services/achievement/achievement';
+import { Achievement, Badge, BookOverview } from '../../models';
+import { Button, Spinner, Icon } from '../../shared/components';
+import { NextTrophy } from './next-trophy/next-trophy';
 
 @Component({
   selector: 'app-student-home',
-  imports: [Button, Spinner],
+  imports: [Button, Spinner, NextTrophy, Icon],
   templateUrl: './student-home.html',
   styleUrl: './student-home.scss',
 })
@@ -16,6 +18,7 @@ export class StudentHome implements OnInit {
   private studentAuth = inject(StudentAuthService);
   private rewardService = inject(RewardService);
   private progressService = inject(ProgressService);
+  private achievementService = inject(AchievementService);
   private router = inject(Router);
 
   readonly student = this.studentAuth.student;
@@ -23,6 +26,11 @@ export class StudentHome implements OnInit {
   readonly points = signal(0);
   readonly books = signal<BookOverview[]>([]);
   readonly loading = signal(true);
+
+  readonly achievementsUnlocked = signal(0);
+  readonly achievementsTotal = signal(0);
+  /** The unlocked milestone closest to being earned, shown as a nudge. */
+  readonly nextAchievement = signal<Achievement | null>(null);
 
   readonly firstName = computed(() => this.student()?.first_name ?? 'Reader');
 
@@ -45,10 +53,10 @@ export class StudentHome implements OnInit {
     const books = this.books();
     const started = books.some((book) => book.percent > 0);
     return [
-      { icon: '📖', label: 'Open a book', done: started },
-      { icon: '🏆', label: 'Finish a book', done: this.completedBooks() > 0 },
-      { icon: '⭐', label: 'Reach 100 points', done: this.points() >= 100 },
-      { icon: '🏅', label: 'Earn a badge', done: this.badges().length > 0 },
+      { icon: 'book', label: 'Open a book', done: started },
+      { icon: 'trophy', label: 'Finish a book', done: this.completedBooks() > 0 },
+      { icon: 'star', label: 'Reach 100 points', done: this.points() >= 100 },
+      { icon: 'badges', label: 'Earn a badge', done: this.badges().length > 0 },
     ];
   });
 
@@ -80,6 +88,24 @@ export class StudentHome implements OnInit {
       },
       error: () => this.loading.set(false),
     });
+
+    this.achievementService.mine().subscribe({
+      next: (response) => {
+        const summary = response.data;
+        this.achievementsUnlocked.set(summary.unlocked);
+        this.achievementsTotal.set(summary.total);
+
+        const closest = summary.achievements
+          .filter((achievement) => !achievement.is_unlocked)
+          .sort((first, second) => second.percent - first.percent)[0];
+        this.nextAchievement.set(closest ?? null);
+      },
+      error: () => {},
+    });
+  }
+
+  goAchievements(): void {
+    this.router.navigate(['/student/achievements']);
   }
 
   openBook(book: BookOverview): void {

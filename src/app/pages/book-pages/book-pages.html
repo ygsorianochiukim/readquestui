@@ -1,5 +1,5 @@
 <div class="page-actions page-actions--split">
-  <a class="back-link" routerLink="/dashboard/books">← Back to books</a>
+  <a class="back-link" routerLink="/dashboard/books"><app-icon name="back" size="sm" /> Back to books</a>
   <input
     #fileInput
     type="file"
@@ -20,7 +20,7 @@
   <app-spinner label="Loading pages…" />
 } @else if (pages().length === 0) {
   <app-empty-state
-    icon="📄"
+    icon="story"
     title="No pages yet"
     message="Upload photos or scans of the book pages. The text is read from each image automatically — you can fix it before pupils see it.">
     <app-button [disabled]="uploading()" (clicked)="fileInput.click()">+ Upload Pages</app-button>
@@ -43,9 +43,9 @@
                 @if (activeNarrationId() === page.id && narrationLoading()) {
                   Loading…
                 } @else if (activeNarrationId() === page.id) {
-                  ⏸ Stop
+                  <app-icon name="pause" size="sm" /> Stop
                 } @else {
-                  🔊 Listen
+                  <app-icon name="listen" size="sm" /> Listen
                 }
               </app-button>
               <app-button variant="ghost" (clicked)="deletePage(page)">Delete</app-button>

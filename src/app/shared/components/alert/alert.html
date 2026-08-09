@@ -4,7 +4,7 @@
     [class.alert--error]="variant() === 'error'"
     [class.alert--success]="variant() === 'success'"
     [class.alert--info]="variant() === 'info'">
-    <span class="alert__icon">{{ icon[variant()] }}</span>
+    <app-icon class="alert__icon" [name]="icon()" size="lg" />
     <span class="alert__message">{{ message() }}</span>
   </div>
 }

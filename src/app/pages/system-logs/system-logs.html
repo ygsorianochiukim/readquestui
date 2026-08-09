@@ -1,0 +1,94 @@
+<app-page-header
+  title="Activity Log"
+  subtitle="An audit trail of what you and your pupils did in ReadQuest." />
+
+<app-card>
+  <form class="filters" (ngSubmit)="applyFilters()">
+    <label class="filters__field">
+      <span class="filters__label">Action</span>
+      <select name="action" [(ngModel)]="action" (change)="applyFilters()">
+        <option value="">All actions</option>
+        @for (option of actions(); track option) {
+          <option [value]="option">{{ label(option) }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="filters__field">
+      <span class="filters__label">Pupil</span>
+      <select name="student" [(ngModel)]="studentId" (change)="applyFilters()">
+        <option value="">All pupils</option>
+        @for (student of students(); track student.id) {
+          <option [value]="student.id">{{ student.first_name }} {{ student.last_name }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="filters__field filters__field--grow">
+      <span class="filters__label">Search</span>
+      <input
+        name="search"
+        [(ngModel)]="search"
+        placeholder="Search the description…"
+        (keyup.enter)="applyFilters()" />
+    </label>
+
+    <div class="filters__actions">
+      <button type="submit" class="filters__button">Filter</button>
+      <button type="button" class="filters__button filters__button--ghost" (click)="clearFilters()">
+        Clear
+      </button>
+    </div>
+  </form>
+
+  @if (loading()) {
+    <app-spinner label="Loading the activity log…" />
+  } @else if (logs().length === 0) {
+    <app-empty-state
+      icon="log"
+      title="Nothing logged yet"
+      message="Actions like creating a pupil, assigning books, or finishing a chapter appear here." />
+  } @else {
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Action</th>
+            <th>Who</th>
+            <th>Details</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (log of logs(); track log.id) {
+            <tr>
+              <td class="table__when">{{ log.created_at | date: 'medium' }}</td>
+              <td>
+                <span class="tag" [attr.data-tone]="tone(log.action)">{{ label(log.action) }}</span>
+              </td>
+              <td>{{ log.actor }}</td>
+              <td class="table__details">{{ log.description }}</td>
+              <td class="table__ip">{{ log.ip_address || '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      <button type="button" class="pager__button" [disabled]="page() === 1" (click)="previous()"><app-icon name="back" size="sm" /> Newer
+      </button>
+      <span class="pager__info">
+        Page {{ page() }} of {{ lastPage() }} · {{ total() }} entries
+      </span>
+      <button
+        type="button"
+        class="pager__button"
+        [disabled]="page() === lastPage()"
+        (click)="next()">
+        Older <app-icon name="forward" size="sm" />
+      </button>
+    </div>
+  }
+</app-card>

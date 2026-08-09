@@ -14,6 +14,7 @@ import {
   FormField,
   Modal,
   Spinner,
+  Icon,
 } from '../../shared/components';
 
 @Component({
@@ -27,6 +28,7 @@ import {
     FormField,
     Modal,
     Spinner,
+    Icon
   ],
   templateUrl: './chapters.html',
   styleUrl: './chapters.scss',
@@ -39,6 +41,10 @@ export class Chapters implements OnInit {
   private route = inject(ActivatedRoute);
 
   readonly imageUploading = signal(false);
+
+  // ---- Scanning a printed page into the story text (Azure Vision OCR) ----
+  readonly scanning = signal(false);
+  readonly scanMessage = signal<string | null>(null);
 
   // ---- Narration (Azure TTS) playback ----
   readonly activeNarrationId = signal<number | null>(null);
@@ -215,6 +221,59 @@ export class Chapters implements OnInit {
         this.errorMessage.set(this.readError(response));
       },
     });
+  }
+
+  /**
+   * Scan a photo of the printed page and append what it reads to the story
+   * text. Appending (rather than replacing) lets a teacher scan a chapter that
+   * runs across several printed pages, one after another.
+   */
+  onScanSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+
+    this.scanning.set(true);
+    this.scanMessage.set(null);
+    this.errorMessage.set(null);
+
+    this.uploadService.scanText(file).subscribe({
+      next: (result) => {
+        const scanned = result.data.text.trim();
+        this.scanning.set(false);
+
+        if (!scanned) {
+          this.scanMessage.set('No text found on that image. Try a clearer photo.');
+          return;
+        }
+
+        const existing = (this.chapterForm.story_text ?? '').trim();
+        this.chapterForm.story_text = existing ? `${existing}\n\n${scanned}` : scanned;
+        this.scanMessage.set(
+          `Added ${result.data.lines} line${result.data.lines === 1 ? '' : 's'} — please check the text and fix anything the scan got wrong.`,
+        );
+      },
+      error: (response: HttpErrorResponse) => {
+        this.scanning.set(false);
+        this.errorMessage.set(this.scanError(response));
+      },
+    });
+  }
+
+  private scanError(response: HttpErrorResponse): string {
+    // 502 and 503 already carry a specific, actionable message from the API.
+    if (response.status === 502 || response.status === 503) {
+      return response.error?.message ?? 'Could not read that image. Please try again.';
+    }
+
+    if (response.status === 413) {
+      return 'That image is too large to upload. Try a smaller photo of the page.';
+    }
+
+    return this.readError(response);
   }
 
   private emptyForm(): ChapterPayload {

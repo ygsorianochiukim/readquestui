@@ -306,6 +306,14 @@
   &--books { border-bottom-color: var(--color-primary); }
   &--badges { border-bottom-color: var(--color-pink); }
   &--progress { border-bottom-color: var(--color-success); }
+
+  &--trophies {
+    border-bottom-color: var(--color-orange);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover { transform: translateY(-3px); }
+  }
 }
 
 // ---- Panels --------------------------------------------------------------

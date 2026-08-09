@@ -9,7 +9,7 @@
     <app-spinner label="Loading students…" />
   } @else if (students().length === 0) {
     <app-empty-state
-      icon="🧒"
+      icon="students"
       title="No students yet"
       message="Add your first pupil to start tracking their reading journey.">
       <app-button (clicked)="openCreateForm()">+ Add Student</app-button>
@@ -33,7 +33,7 @@
               <td class="table__strong">{{ student.first_name }} {{ student.last_name }}</td>
               <td>{{ student.username }}</td>
               <td>{{ student.reading_level || '—' }}</td>
-              <td>⭐ {{ student.points ?? 0 }}</td>
+              <td><app-icon name="star" size="sm" /> {{ student.points ?? 0 }}</td>
               <td>
                 <app-badge
                   [label]="student.status"
@@ -88,6 +88,25 @@
         <option value="inactive">Inactive</option>
       </select>
     </app-form-field>
+
+    <app-form-field label="Photo" hint="Optional — shown on the pupil's own screen">
+      <div class="photo-upload">
+        <div class="photo-upload__preview">
+          @if (studentForm.profile_image_url) {
+            <img [src]="studentForm.profile_image_url" alt="Pupil photo" />
+          } @else {
+            <app-icon name="students" size="lg" />
+          }
+        </div>
+        <input #photoInput type="file" accept="image/*" hidden (change)="onPhotoSelected($event)" />
+        <app-button
+          variant="secondary"
+          [disabled]="photoUploading()"
+          (clicked)="photoInput.click()">
+          {{ photoUploading() ? 'Uploading…' : (studentForm.profile_image_url ? 'Change' : 'Upload') }}
+        </app-button>
+      </div>
+    </app-form-field>
   </form>
 
   <div footer>
@@ -104,7 +123,7 @@
   (closed)="closeRewards()">
   <div class="rewards">
     <div class="rewards__points">
-      <span class="rewards__points-value">⭐ {{ rewardsPoints() }}</span>
+      <span class="rewards__points-value"><app-icon name="star" size="sm" /> {{ rewardsPoints() }}</span>
       <span class="rewards__points-label">total points</span>
     </div>
 
@@ -116,7 +135,7 @@
       <ul class="rewards__list">
         @for (badge of allBadges(); track badge.id) {
           <li class="rewards__item" [class.rewards__item--earned]="isEarned(badge.id)">
-            <span class="rewards__icon">{{ badge.icon || '🏅' }}</span>
+            <app-icon class="rewards__icon" [name]="badge.icon || 'badges'" size="xl" />
             <div class="rewards__info">
               <p class="rewards__name">{{ badge.name }}</p>
               <p class="rewards__meta">{{ badge.points }} pts</p>
@@ -158,7 +177,7 @@
               <span>Completeness {{ (attempt.completeness_score ?? 0).toFixed(0) }}</span>
             </div>
             @if (attempt.is_validated) {
-              <span class="scores__validated">✓ Validated</span>
+              <span class="scores__validated"><app-icon name="check" size="sm" /> Validated</span>
             } @else {
               <app-button
                 [disabled]="validatingId() === attempt.id"

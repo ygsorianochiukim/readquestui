@@ -112,3 +112,19 @@
     }
   }
 }
+
+// Scan-the-printed-page control under the story textarea.
+.scan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+
+  &__note {
+    flex: 1;
+    min-width: 200px;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+}

@@ -12,6 +12,7 @@ import {
   FormField,
   Modal,
   Spinner,
+  Icon,
 } from '../../shared/components';
 
 @Component({
@@ -25,6 +26,7 @@ import {
     FormField,
     Modal,
     Spinner,
+    Icon
   ],
   templateUrl: './books.html',
   styleUrl: './books.scss',

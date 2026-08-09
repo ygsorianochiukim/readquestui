@@ -10,15 +10,20 @@ import {
   FormField,
   Modal,
   Spinner,
+  Icon,
 } from '../../shared/components';
+import { ICON_NAMES } from '../../shared/components';
 
 @Component({
   selector: 'app-badges',
-  imports: [FormsModule, Alert, Button, EmptyState, FormField, Modal, Spinner],
+  imports: [FormsModule, Alert, Button, EmptyState, FormField, Modal, Spinner, Icon],
   templateUrl: './badges.html',
   styleUrl: './badges.scss',
 })
 export class Badges implements OnInit {
+  /** Icon choices for the badge form. */
+  readonly iconNames = ICON_NAMES;
+
   private badgeService = inject(BadgeService);
 
   readonly badges = signal<Badge[]>([]);
@@ -107,7 +112,7 @@ export class Badges implements OnInit {
   }
 
   private emptyForm(): BadgePayload {
-    return { name: '', icon: '', description: '', criteria: '', points: 10, status: 'active' };
+    return { name: '', icon: 'badges', description: '', criteria: '', points: 10, status: 'active' };
   }
 
   private readError(response: HttpErrorResponse): string {

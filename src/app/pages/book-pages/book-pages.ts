@@ -5,11 +5,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { BookPageService } from '../../services/book-page/book-page';
 import { NarrationService } from '../../services/narration/narration';
 import { BookPage } from '../../models';
-import { Alert, Button, EmptyState, Spinner } from '../../shared/components';
+import { Alert, Button, EmptyState, Spinner, Icon } from '../../shared/components';
 
 @Component({
   selector: 'app-book-pages',
-  imports: [FormsModule, RouterLink, Alert, Button, EmptyState, Spinner],
+  imports: [FormsModule, RouterLink, Alert, Button, EmptyState, Spinner, Icon],
   templateUrl: './book-pages.html',
   styleUrl: './book-pages.scss',
 })

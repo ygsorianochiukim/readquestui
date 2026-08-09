@@ -30,6 +30,14 @@ export const routes: Routes = [
           import('./pages/student-library/student-library').then((m) => m.StudentLibrary),
       },
       {
+        path: 'achievements',
+        data: { title: 'Achievements' },
+        loadComponent: () =>
+          import('./pages/student-achievements/student-achievements').then(
+            (m) => m.StudentAchievements,
+          ),
+      },
+      {
         path: 'books/:bookId',
         data: { title: 'Reading' },
         loadComponent: () => import('./pages/student-book/student-book').then((m) => m.StudentBook),
@@ -84,6 +92,11 @@ export const routes: Routes = [
         path: 'badges',
         data: { title: 'Badges & Rewards' },
         loadComponent: () => import('./pages/badges/badges').then((m) => m.Badges),
+      },
+      {
+        path: 'activity-log',
+        data: { title: 'Activity Log' },
+        loadComponent: () => import('./pages/system-logs/system-logs').then((m) => m.SystemLogs),
       },
       {
         path: 'books/:bookId/chapters',

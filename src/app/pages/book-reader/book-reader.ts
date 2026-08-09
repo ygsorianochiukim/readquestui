@@ -1,13 +1,14 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ReaderService } from '../../services/reader/reader';
 import { NarrationService } from '../../services/narration/narration';
 import { RecorderService } from '../../services/recorder/recorder';
 import { PronunciationService } from '../../services/pronunciation/pronunciation';
-import { Book, PronunciationAttempt } from '../../models';
-import { Alert, Button, EmptyState, Spinner } from '../../shared/components';
+import { ProgressService } from '../../services/progress/progress';
+import { Book, BookPageProgress, PronunciationAttempt } from '../../models';
+import { Alert, Button, EmptyState, Spinner, Icon } from '../../shared/components';
 
 interface ReadingLeaf {
   kind: 'page' | 'chapter';
@@ -19,7 +20,7 @@ interface ReadingLeaf {
 
 @Component({
   selector: 'app-book-reader',
-  imports: [RouterLink, Alert, Button, EmptyState, Spinner],
+  imports: [RouterLink, Alert, Button, EmptyState, Spinner, Icon],
   templateUrl: './book-reader.html',
   styleUrl: './book-reader.scss',
 })
@@ -28,7 +29,9 @@ export class BookReader implements OnInit {
   private narrationService = inject(NarrationService);
   private recorder = inject(RecorderService);
   private pronunciation = inject(PronunciationService);
+  private progressService = inject(ProgressService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   readonly bookId = Number(this.route.snapshot.paramMap.get('bookId'));
   readonly book = signal<Book | null>(null);
@@ -39,6 +42,23 @@ export class BookReader implements OnInit {
 
   readonly current = computed<ReadingLeaf | null>(() => this.leaves()[this.index()] ?? null);
   readonly total = computed(() => this.leaves().length);
+  readonly isLastLeaf = computed(() => this.total() > 0 && this.index() === this.total() - 1);
+
+  /** Page-by-page progress; only page-based books have it. */
+  readonly pageProgress = signal<BookPageProgress | null>(null);
+  readonly markingRead = signal(false);
+
+  /** This page's progress row, when the book is page-based. */
+  readonly currentPage = computed(() => {
+    const leaf = this.current();
+    if (!leaf || leaf.kind !== 'page') {
+      return null;
+    }
+    return this.pageProgress()?.pages.find((page) => page.id === leaf.id) ?? null;
+  });
+
+  readonly isPageBook = computed(() => this.book()?.type === 'scanned');
+  readonly bookFinished = computed(() => this.pageProgress()?.is_completed ?? false);
 
   readonly narrating = signal(false);
   readonly narrationLoading = signal(false);
@@ -58,6 +78,10 @@ export class BookReader implements OnInit {
         this.book.set(book);
         this.leaves.set(this.buildLeaves(book));
         this.loading.set(false);
+
+        if (book.type === 'scanned') {
+          this.loadPageProgress();
+        }
       },
       error: (response) => {
         this.errorMessage.set(this.readError(response));
@@ -120,6 +144,10 @@ export class BookReader implements OnInit {
           next: (response) => {
             this.result.set(response.data);
             this.recordingState.set('idle');
+            // A passing read-aloud finishes the page, so refresh the tracker.
+            if (leaf.kind === 'page') {
+              this.loadPageProgress();
+            }
           },
           error: (response: HttpErrorResponse) => {
             this.recordingState.set('idle');
@@ -143,6 +171,42 @@ export class BookReader implements OnInit {
     } catch {
       this.errorMessage.set('Please allow microphone access to record your reading.');
     }
+  }
+
+  private loadPageProgress(): void {
+    this.progressService.bookPages(this.bookId).subscribe({
+      next: (response) => this.pageProgress.set(response.data),
+      // A book the pupil was not assigned still reads fine; it just isn't tracked.
+      error: () => this.pageProgress.set(null),
+    });
+  }
+
+  /** Tick this page off as read. */
+  markPageRead(): void {
+    const leaf = this.current();
+    if (!leaf || leaf.kind !== 'page' || this.markingRead()) {
+      return;
+    }
+
+    this.markingRead.set(true);
+    this.progressService.markPageRead(leaf.id).subscribe({
+      next: (response) => {
+        this.pageProgress.set(response.data);
+        this.markingRead.set(false);
+      },
+      error: (response: HttpErrorResponse) => {
+        this.markingRead.set(false);
+        this.errorMessage.set(
+          response.error?.message ?? 'Could not save your progress. Please try again.',
+        );
+      },
+    });
+  }
+
+  /** Leave the book and go back to the library. */
+  finish(): void {
+    this.stopNarration();
+    this.router.navigate(['/student/library']);
   }
 
   /** Colour band for a score: great / good / try. */

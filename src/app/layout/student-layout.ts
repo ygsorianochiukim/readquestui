@@ -1,4 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Icon } from '../shared/components';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { StudentAuthService } from '../services/student-auth/student-auth';
 import { RewardService } from '../services/reward/reward';
@@ -11,7 +12,7 @@ interface GameNavItem {
 
 @Component({
   selector: 'app-student-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
   templateUrl: './student-layout.html',
   styleUrl: './student-layout.scss',
 })
@@ -28,8 +29,9 @@ export class StudentLayout implements OnInit {
   readonly playerLevel = computed(() => Math.floor(this.points() / 100) + 1);
 
   readonly navItems: GameNavItem[] = [
-    { label: 'Home', path: '/student/home', icon: '🏠' },
-    { label: 'Adventure', path: '/student/library', icon: '🗺️' },
+    { label: 'Home', path: '/student/home', icon: 'home' },
+    { label: 'Adventure', path: '/student/library', icon: 'map' },
+    { label: 'Trophies', path: '/student/achievements', icon: 'trophy' },
   ];
 
   readonly fullName = computed(() => {

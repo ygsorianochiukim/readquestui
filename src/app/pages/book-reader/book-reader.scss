@@ -85,6 +85,22 @@
     font-size: var(--font-size-sm);
     font-style: italic;
   }
+
+  // Where to go once a score is showing.
+  &__after {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  &__after-text {
+    font-weight: 700;
+    color: var(--color-text);
+  }
 }
 
 // =============================================================
@@ -273,5 +289,111 @@
   .book--next .book__spread,
   .book--prev .book__spread {
     animation: none;
+  }
+}
+
+// =============================================================
+//  Page tracker (page-based books)
+// =============================================================
+.track {
+  width: 100%;
+  max-width: 760px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-sm);
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  &__label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__pct {
+    font-family: var(--font-display);
+    color: var(--color-primary-dark);
+  }
+
+  &__bar {
+    height: 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    overflow: hidden;
+  }
+
+  &__fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+    transition: width 0.4s ease;
+  }
+
+  &__dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+
+  &__dot {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: var(--color-background);
+    color: var(--color-text-muted);
+    border: 2px solid transparent;
+
+    &--done {
+      background: var(--color-success-soft);
+      color: var(--color-success);
+    }
+
+    &--here {
+      border-color: var(--color-primary);
+    }
+  }
+
+  &__page {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-4);
+  }
+
+  &__done {
+    font-weight: 700;
+    color: var(--color-success);
+  }
+
+  &__todo {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__finished {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  &__finished-text {
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
+    color: var(--color-success);
   }
 }

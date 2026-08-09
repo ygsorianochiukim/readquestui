@@ -2,7 +2,7 @@ import { Component, ElementRef, computed, inject, OnInit, signal } from '@angula
 import { Router } from '@angular/router';
 import { ProgressService } from '../../services/progress/progress';
 import { BookOverview } from '../../models';
-import { EmptyState, Spinner } from '../../shared/components';
+import { EmptyState, Spinner, Icon } from '../../shared/components';
 
 type LevelState = 'locked' | 'current' | 'available' | 'completed';
 
@@ -25,7 +25,7 @@ const BOTTOM_PAD = 130;
 
 @Component({
   selector: 'app-student-library',
-  imports: [EmptyState, Spinner],
+  imports: [EmptyState, Spinner, Icon],
   templateUrl: './student-library.html',
   styleUrl: './student-library.scss',
 })

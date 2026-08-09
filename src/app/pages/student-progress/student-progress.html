@@ -3,8 +3,13 @@
 } @else if (report(); as data) {
   <div class="report">
     <div class="report__head no-print">
-      <app-button variant="ghost" (clicked)="back()">← Students</app-button>
-      <app-button variant="secondary" (clicked)="print()">🖨 Print report</app-button>
+      <app-button variant="ghost" (clicked)="back()"><app-icon name="back" size="sm" /> Students</app-button>
+      <div class="report__head-actions">
+        <app-button variant="secondary" [disabled]="exporting()" (clicked)="exportCsv()">
+          <app-icon name="download" size="sm" /> {{ exporting() ? 'Preparing…' : 'Export CSV' }}
+        </app-button>
+        <app-button variant="secondary" (clicked)="print()"><app-icon name="print" size="sm" /> Print report</app-button>
+      </div>
     </div>
 
     <app-card>
@@ -13,7 +18,7 @@
           <h2 class="summary__name">{{ data.student.full_name }}</h2>
           <p class="summary__meta">
             {{ data.student.username }} · {{ data.student.reading_level || 'No level' }} ·
-            ⭐ {{ data.student.points }} points
+            <app-icon name="star" size="sm" /> {{ data.student.points }} points
           </p>
         </div>
         <div class="summary__overall">
@@ -29,11 +34,41 @@
         <div class="summary__badges">
           @for (badge of data.badges; track badge.id) {
             <span class="summary__badge" [title]="badge.description || badge.name">
-              {{ badge.icon || '🏅' }} {{ badge.name }}
+              <app-icon [name]="badge.icon || 'badges'" size="sm" /> {{ badge.name }}
             </span>
           }
         </div>
       }
+    </app-card>
+
+    <!-- Achievement milestones -->
+    <app-card>
+      <div class="ach-head">
+        <h3 class="ach-head__title"><app-icon name="trophy" size="sm" /> Achievements</h3>
+        <span class="ach-head__count">
+          {{ data.achievements.unlocked }} of {{ data.achievements.total }} unlocked
+        </span>
+      </div>
+
+      <div class="ach-grid">
+        @for (achievement of data.achievements.achievements; track achievement.id) {
+          <div class="ach-item" [class.ach-item--locked]="!achievement.is_unlocked">
+            <span class="ach-item__icon">
+              <app-icon [name]="achievement.is_unlocked ? (achievement.icon || 'trophy') : 'locked'" size="lg" />
+            </span>
+            <div class="ach-item__body">
+              <p class="ach-item__name">{{ achievement.name }}</p>
+              <p class="ach-item__goal">
+                {{ achievement.current }} / {{ achievement.threshold }}
+                {{ achievement.metric_label }}
+              </p>
+              <span class="ach-item__bar">
+                <span class="ach-item__fill" [style.width.%]="achievement.percent"></span>
+              </span>
+            </div>
+          </div>
+        }
+      </div>
     </app-card>
 
     <!-- Per-book / per-chapter progress -->
@@ -59,11 +94,11 @@
               @for (chapter of book.chapters; track chapter.id) {
                 <tr>
                   <td class="table__strong">{{ chapter.chapter_number }}. {{ chapter.title }}</td>
-                  <td>{{ activityMark(chapter.progress?.story_read) }}</td>
-                  <td>{{ activityMark(chapter.progress?.pronunciation_passed) }}</td>
-                  <td>{{ activityMark(chapter.progress?.game_completed) }}</td>
+                  <td>@if (chapter.progress?.story_read) {<app-icon name="check" size="sm" />} @else {—}</td>
+                  <td>@if (chapter.progress?.pronunciation_passed) {<app-icon name="check" size="sm" />} @else {—}</td>
+                  <td>@if (chapter.progress?.game_completed) {<app-icon name="check" size="sm" />} @else {—}</td>
                   <td>
-                    {{ activityMark(chapter.progress?.quiz_passed) }}
+                    @if (chapter.progress?.quiz_passed) {<app-icon name="check" size="sm" />} @else {—}
                     @if (chapter.progress?.quiz_score !== null && chapter.progress?.quiz_score !== undefined) {
                       ({{ chapter.progress?.quiz_score }}%)
                     }
@@ -101,7 +136,7 @@
                   <td>{{ (attempt.accuracy_score ?? 0).toFixed(0) }}</td>
                   <td>{{ (attempt.fluency_score ?? 0).toFixed(0) }}</td>
                   <td>{{ (attempt.completeness_score ?? 0).toFixed(0) }}</td>
-                  <td>{{ attempt.is_validated ? '✓' : '—' }}</td>
+                  <td>@if (attempt.is_validated) {<app-icon name="check" size="sm" />} @else {—}</td>
                 </tr>
               }
             </tbody>

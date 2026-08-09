@@ -26,11 +26,11 @@
   }
 
   &__caret {
-    font-size: 0.7rem;
     transition: transform 0.15s ease;
+    transform: rotate(90deg);
 
     &--open {
-      transform: rotate(180deg);
+      transform: rotate(-90deg);
     }
   }
 
@@ -51,6 +51,9 @@
   }
 
   &__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     text-align: left;
     font: inherit;
     font-size: var(--font-size-sm);

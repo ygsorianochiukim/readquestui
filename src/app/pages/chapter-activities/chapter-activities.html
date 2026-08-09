@@ -3,13 +3,13 @@
 } @else {
   <div class="qa">
     <div class="qa__head">
-      <button type="button" class="qa__back" (click)="finish()">← Back to book</button>
+      <button type="button" class="qa__back" (click)="finish()"><app-icon name="back" size="sm" /> Back to book</button>
       <p class="qa__eyebrow">Chapter {{ chapterNumber() }} · Quest</p>
       <h1 class="qa__title">{{ title() }}</h1>
     </div>
 
     @if (completed()) {
-      <app-alert variant="success" message="🎉 Quest complete! You can replay any stage below." />
+      <app-alert variant="success" message="Quest complete! You can replay any stage below." />
     }
     <app-alert [message]="errorMessage()" />
 
@@ -25,7 +25,7 @@
           [class.track__stage--active]="activeStep() === step.key"
           [class.track__stage--done]="step.done"
           (click)="go(step.key)">
-          <span class="track__bubble">{{ step.done ? '✓' : step.icon }}</span>
+          <span class="track__bubble"><app-icon [name]="step.done ? 'check' : step.icon" size="lg" /></span>
           <span class="track__label">{{ step.label }}</span>
         </button>
       }
@@ -36,9 +36,10 @@
       @if (activeStep() === 'story') {
         <div class="act">
           <div class="act__bar">
-            <h2 class="act__title">📖 Read the story</h2>
+            <h2 class="act__title"><app-icon name="book" size="sm" /> Read the story</h2>
             <app-button variant="secondary" (clicked)="toggleNarration()">
-              {{ narrating() ? '⏹ Stop' : (narrationLoading() ? 'Loading…' : '🔊 Listen') }}
+              <app-icon [name]="narrating() ? 'stop' : 'listen'" size="sm" />
+              {{ narrating() ? 'Stop' : (narrationLoading() ? 'Loading…' : 'Listen') }}
             </app-button>
           </div>
           @if (imageUrl()) {
@@ -51,7 +52,8 @@
           }
           <div class="act__actions">
             <app-button (clicked)="markStoryRead()">
-              {{ storyRead() ? 'Read again — continue →' : "I've read it →" }}
+              {{ storyRead() ? 'Read again — continue' : "I've read it" }}
+              <app-icon name="forward" size="sm" />
             </app-button>
           </div>
         </div>
@@ -60,8 +62,11 @@
       <!-- READ ALOUD -->
       @if (activeStep() === 'readaloud') {
         <div class="act">
-          <h2 class="act__title">🎤 Read it aloud</h2>
-          <p class="act__muted">Press record, read the story out loud, then stop to get your score.</p>
+          <h2 class="act__title"><app-icon name="mic" size="sm" /> Read it aloud</h2>
+          <p class="act__muted">
+            Press record, read the story out loud, then stop to get your score.
+            Score {{ passMark }} or higher to unlock the next step.
+          </p>
           @if (storyText()) {
             <p class="act__story act__story--compact">{{ storyText() }}</p>
           }
@@ -71,12 +76,14 @@
               [variant]="recordingState() === 'recording' ? 'danger' : 'primary'"
               [disabled]="recordingState() === 'assessing'"
               (clicked)="toggleRecording()">
-              @if (recordingState() === 'idle') {
-                🎙️ Start recording
-              } @else if (recordingState() === 'recording') {
-                ⏹ Stop & score
-              } @else {
+              @if (recordingState() === 'recording') {
+                <app-icon name="stop" size="sm" /> Stop & score
+              } @else if (recordingState() === 'assessing') {
                 Scoring…
+              } @else if (result()) {
+                <app-icon name="mic" size="sm" /> Try again
+              } @else {
+                <app-icon name="mic" size="sm" /> Start recording
               }
             </app-button>
           </div>
@@ -107,8 +114,24 @@
 
           @if (pronunciationPassed()) {
             <div class="act__actions">
-              <app-alert variant="success" message="Great reading! ✅" />
-              <app-button (clicked)="go('game')">Continue →</app-button>
+              <app-alert variant="success" message="Great reading!" />
+              <app-button (clicked)="go('game')">Continue <app-icon name="forward" size="sm" /></app-button>
+            </div>
+          } @else if (result()) {
+            <!-- Scored below the pass mark: say why, and never leave them stuck. -->
+            <div class="act__actions">
+              <app-alert
+                variant="info"
+                [message]="
+                  'You scored ' +
+                  (result()?.pron_score ?? 0) +
+                  '. You need ' +
+                  passMark +
+                  ' to finish this step — read a little slower and try again.'
+                " />
+              <app-button (clicked)="go('game')" variant="secondary">
+                Play the game first <app-icon name="forward" size="sm" />
+              </app-button>
             </div>
           }
         </div>
@@ -117,14 +140,30 @@
       <!-- GAME -->
       @if (activeStep() === 'game') {
         <div class="act">
-          <h2 class="act__title">🎮 Word game</h2>
-          <app-word-scramble
-            [words]="gameWords()"
-            [alreadyDone]="gameCompleted()"
-            (completed)="onGameCompleted()" />
+          <h2 class="act__title">{{ gameTitle() }}</h2>
+          @switch (gameKind()) {
+            @case ('missing-word') {
+              <app-missing-word
+                [sentences]="gameSentences()"
+                [alreadyDone]="gameCompleted()"
+                (completed)="onGameCompleted()" />
+            }
+            @case ('sentence-builder') {
+              <app-sentence-builder
+                [sentences]="gameSentences()"
+                [alreadyDone]="gameCompleted()"
+                (completed)="onGameCompleted()" />
+            }
+            @default {
+              <app-word-scramble
+                [words]="gameWords()"
+                [alreadyDone]="gameCompleted()"
+                (completed)="onGameCompleted()" />
+            }
+          }
           @if (gameCompleted()) {
             <div class="act__actions">
-              <app-button (clicked)="go('quiz')">Continue to quiz →</app-button>
+              <app-button (clicked)="go('quiz')">Continue to quiz <app-icon name="forward" size="sm" /></app-button>
             </div>
           }
         </div>
@@ -133,12 +172,12 @@
       <!-- QUIZ -->
       @if (activeStep() === 'quiz') {
         <div class="act">
-          <h2 class="act__title">🧠 Chapter quiz</h2>
+          <h2 class="act__title"><app-icon name="quiz" size="sm" /> Chapter quiz</h2>
 
           @if (quizQuestions().length === 0) {
             <p class="act__muted">This chapter has no quiz. You can finish it now!</p>
             <div class="act__actions">
-              <app-button (clicked)="submitQuiz()">Complete chapter →</app-button>
+              <app-button (clicked)="submitQuiz()">Complete chapter <app-icon name="forward" size="sm" /></app-button>
             </div>
           } @else if (quizResult(); as res) {
             <div class="quiz-result">
@@ -147,8 +186,8 @@
               </span>
               <p>You got {{ res.correct }} of {{ res.total }} correct.</p>
               @if (res.passed) {
-                <app-alert variant="success" message="You passed the quiz! 🎉" />
-                <app-button (clicked)="finish()">Finish chapter →</app-button>
+                <app-alert variant="success" message="You passed the quiz!" />
+                <app-button (clicked)="finish()">Finish chapter <app-icon name="forward" size="sm" /></app-button>
               } @else {
                 <app-alert message="You need 70% to pass. Give it another try!" variant="info" />
                 <app-button (clicked)="retryQuiz()">Try again</app-button>

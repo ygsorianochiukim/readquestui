@@ -3,11 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { StudentAuthService } from '../../services/student-auth/student-auth';
-import { Alert, Button, FormField } from '../../shared/components';
+import { Alert, Button, FormField, Icon } from '../../shared/components';
 
 @Component({
   selector: 'app-student-login',
-  imports: [FormsModule, RouterLink, Alert, Button, FormField],
+  imports: [FormsModule, RouterLink, Alert, Button, FormField, Icon],
   templateUrl: './student-login.html',
   styleUrl: './student-login.scss',
 })

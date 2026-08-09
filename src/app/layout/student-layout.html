@@ -28,11 +28,11 @@
 
     <div class="hud__currencies">
       <div class="hud__pill hud__pill--badges" aria-label="Badges">
-        <span class="hud__pill-icon">🏅</span>
+        <app-icon class="hud__pill-icon" name="badges" size="xl" />
         <span class="hud__pill-val">{{ badgeCount() }}</span>
       </div>
       <div class="hud__pill hud__pill--coins" aria-label="Points">
-        <span class="hud__pill-icon">⭐</span>
+        <app-icon class="hud__pill-icon" name="star" size="xl" />
         <span class="hud__pill-val">{{ points() }}</span>
         <span class="hud__plus">+</span>
       </div>
@@ -56,7 +56,7 @@
       </a>
     }
     <button type="button" class="dock__btn dock__btn--logout" (click)="logout()">
-      <span class="dock__icon">🚪</span>
+      <app-icon class="dock__icon" name="logout" size="lg" />
       <span class="dock__label">Log out</span>
     </button>
   </nav>
