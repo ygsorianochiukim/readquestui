@@ -165,6 +165,13 @@
     font-size: var(--font-size-sm);
   }
 
+  // How much of the story the reading actually matched.
+  &__match {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
+
   &__actions {
     display: flex;
     flex-direction: column;

@@ -124,7 +124,11 @@
 
     @if (result(); as attempt) {
       <div class="reader__result">
-        <h3 class="reader__result-title">Nice reading! Here's how you did:</h3>
+        @if (attempt.is_off_script) {
+          <h3 class="reader__result-title">That didn’t sound like this page.</h3>
+        } @else {
+          <h3 class="reader__result-title">Nice reading! Here's how you did:</h3>
+        }
         <div class="reader__scores">
           <div class="score score--{{ scoreTone(attempt.pron_score) }}">
             <span class="score__value">{{ (attempt.pron_score ?? 0).toFixed(0) }}</span>
@@ -143,9 +147,20 @@
             <span class="score__label">Completeness</span>
           </div>
         </div>
-        @if (attempt.recognized_text) {
-          <p class="reader__heard">We heard: “{{ attempt.recognized_text }}”</p>
-        }
+        <!-- What we actually heard, so a pupil can see why they scored as they did. -->
+        <p class="reader__heard">
+          @if (attempt.recognized_text) {
+            We heard: “{{ attempt.recognized_text }}”
+          } @else {
+            We couldn’t make out any words.
+          }
+        </p>
+        <p class="reader__match">
+          That matched {{ (attempt.text_match_score ?? 0).toFixed(0) }}% of the words on this page.
+          @if (readAloudHint(); as hint) {
+            {{ hint }}
+          }
+        </p>
 
         <!-- Always give the reader somewhere to go after a score. -->
         <div class="reader__after">

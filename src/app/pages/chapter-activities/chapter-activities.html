@@ -107,9 +107,17 @@
                 <span class="score__label">Complete</span>
               </div>
             </div>
-            @if (attempt.recognized_text) {
-              <p class="act__muted">We heard: “{{ attempt.recognized_text }}”</p>
-            }
+            <!-- What we actually heard, so the score makes sense to the pupil. -->
+            <p class="act__muted">
+              @if (attempt.recognized_text) {
+                We heard: “{{ attempt.recognized_text }}”
+              } @else {
+                We couldn’t make out any words.
+              }
+            </p>
+            <p class="act__match">
+              That matched {{ (attempt.text_match_score ?? 0).toFixed(0) }}% of the words in this story.
+            </p>
           }
 
           @if (pronunciationPassed()) {
@@ -118,17 +126,9 @@
               <app-button (clicked)="go('game')">Continue <app-icon name="forward" size="sm" /></app-button>
             </div>
           } @else if (result()) {
-            <!-- Scored below the pass mark: say why, and never leave them stuck. -->
+            <!-- Below the pass mark: say why, and never leave them stuck. -->
             <div class="act__actions">
-              <app-alert
-                variant="info"
-                [message]="
-                  'You scored ' +
-                  (result()?.pron_score ?? 0) +
-                  '. You need ' +
-                  passMark +
-                  ' to finish this step — read a little slower and try again.'
-                " />
+              <app-alert variant="info" [message]="readAloudFeedback()" />
               <app-button (clicked)="go('game')" variant="secondary">
                 Play the game first <app-icon name="forward" size="sm" />
               </app-button>

@@ -86,6 +86,14 @@
     font-style: italic;
   }
 
+  // How much of the page the reading actually matched.
+  &__match {
+    margin-top: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
+
   // Where to go once a score is showing.
   &__after {
     display: flex;

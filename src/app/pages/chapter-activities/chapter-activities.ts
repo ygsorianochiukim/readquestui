@@ -101,6 +101,37 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly recordingState = signal<'idle' | 'recording' | 'assessing'>('idle');
   readonly result = signal<PronunciationAttempt | null>(null);
 
+  /**
+   * Why the last read-aloud fell short, in words a pupil can act on. Reading
+   * the wrong words, reading only some of them, and reading them unclearly all
+   * need different advice — "read a little slower" helps none of the first two.
+   */
+  readonly readAloudFeedback = computed(() => {
+    const attempt = this.result();
+    if (!attempt) {
+      return '';
+    }
+
+    const matched = Math.round(attempt.text_match_score ?? 0);
+
+    if (attempt.is_off_script) {
+      return (
+        `That did not match the story — only ${matched}% of the words matched. ` +
+        'Read the words in the story out loud and try again.'
+      );
+    }
+    if (matched < this.passMark) {
+      return (
+        `You read part of the story — ${matched}% of the words. ` +
+        'Read the whole story out loud and try again.'
+      );
+    }
+    return (
+      `You scored ${Math.round(attempt.pron_score ?? 0)}. You need ${this.passMark} to finish ` +
+      'this step — read a little slower and try again.'
+    );
+  });
+
   // Quiz
   readonly quizQuestions = signal<StudentQuizQuestion[]>([]);
   readonly answers = signal<Record<number, string>>({});

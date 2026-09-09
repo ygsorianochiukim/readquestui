@@ -175,6 +175,7 @@
               <span>Accuracy {{ (attempt.accuracy_score ?? 0).toFixed(0) }}</span>
               <span>Fluency {{ (attempt.fluency_score ?? 0).toFixed(0) }}</span>
               <span>Completeness {{ (attempt.completeness_score ?? 0).toFixed(0) }}</span>
+              <span>Words matched {{ (attempt.text_match_score ?? 0).toFixed(0) }}%</span>
             </div>
             @if (attempt.is_validated) {
               <span class="scores__validated"><app-icon name="check" size="sm" /> Validated</span>
@@ -186,6 +187,17 @@
               </app-button>
             }
           </div>
+          <!-- What the pupil actually said, so an off-script attempt is obvious. -->
+          <p class="scores__heard">
+            @if (attempt.recognized_text) {
+              Heard: “{{ attempt.recognized_text }}”
+            } @else {
+              No words were made out.
+            }
+            @if (attempt.is_off_script) {
+              <strong class="scores__off-script">— did not match the text</strong>
+            }
+          </p>
           @if (attempt.audio_url) {
             <audio class="scores__audio" [src]="attempt.audio_url" controls></audio>
           }

@@ -71,6 +71,27 @@ export class BookReader implements OnInit {
   readonly recordingState = signal<'idle' | 'recording' | 'assessing'>('idle');
   readonly result = signal<PronunciationAttempt | null>(null);
 
+  /** The score a read-aloud needs to finish a page (ProgressService::PRONUNCIATION_PASS). */
+  readonly passMark = 60;
+
+  /**
+   * What to tell the pupil after a score. Reading the wrong words and reading
+   * only some of them need different advice, and neither is "read slower".
+   */
+  readonly readAloudHint = computed(() => {
+    const attempt = this.result();
+    if (!attempt) {
+      return null;
+    }
+    if (attempt.is_off_script) {
+      return 'Read the words on the page out loud and try again.';
+    }
+    if ((attempt.text_match_score ?? 0) < this.passMark) {
+      return 'You read part of the page — read the whole page out loud and try again.';
+    }
+    return null;
+  });
+
   ngOnInit(): void {
     this.readerService.book(this.bookId).subscribe({
       next: (response) => {
