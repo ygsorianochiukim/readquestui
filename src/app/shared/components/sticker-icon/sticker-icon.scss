@@ -1,0 +1,125 @@
+// Each colour is a light top, a deep bottom and a darker rim underneath, so
+// the tile reads as a raised, pressable game piece.
+:host {
+  --top: #6fa8ff;
+  --bottom: #3b76e8;
+  --rim: #2a58b8;
+  --ink: #fff;
+
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--tile);
+  height: var(--tile);
+  border-radius: 32%;
+  background: linear-gradient(180deg, var(--top), var(--bottom));
+  color: var(--ink);
+  box-shadow:
+    0 3px 0 var(--rim),
+    0 5px 10px rgba(20, 30, 60, 0.18);
+  vertical-align: middle;
+
+  // A soft shine across the top, like a sticker catching the light.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 6% 10% 52%;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+    pointer-events: none;
+  }
+
+  // The icon itself: bolder than elsewhere, with a light fill so it looks
+  // solid rather than drawn in thin wire.
+  ::ng-deep svg {
+    position: relative;
+    fill: rgba(255, 255, 255, 0.28);
+    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.18));
+  }
+}
+
+:host(.sticker--sm) {
+  --tile: 28px;
+  box-shadow:
+    0 2px 0 var(--rim),
+    0 3px 6px rgba(20, 30, 60, 0.16);
+}
+
+:host(.sticker--md) {
+  --tile: 40px;
+}
+
+:host(.sticker--lg) {
+  --tile: 52px;
+}
+
+:host(.sticker--xl) {
+  --tile: 68px;
+  box-shadow:
+    0 5px 0 var(--rim),
+    0 8px 16px rgba(20, 30, 60, 0.2);
+}
+
+// ---- Colours ----
+:host(.sticker--red) {
+  --top: #ff8a80;
+  --bottom: #f0473d;
+  --rim: #b92f27;
+}
+
+:host(.sticker--orange) {
+  --top: #ffc063;
+  --bottom: #ff8a1f;
+  --rim: #c9620a;
+}
+
+// Gold is light, so it takes dark ink to stay readable.
+:host(.sticker--yellow) {
+  --top: #ffe57a;
+  --bottom: #ffbf1f;
+  --rim: #d18f00;
+  --ink: #7a4b00;
+
+  ::ng-deep svg {
+    fill: rgba(255, 255, 255, 0.6);
+    filter: none;
+  }
+}
+
+:host(.sticker--green) {
+  --top: #6fe3a2;
+  --bottom: #22b566;
+  --rim: #16854a;
+}
+
+:host(.sticker--teal) {
+  --top: #5fe0d2;
+  --bottom: #14a89a;
+  --rim: #0c7a70;
+}
+
+:host(.sticker--blue) {
+  --top: #7db3ff;
+  --bottom: #3b76e8;
+  --rim: #2a58b8;
+}
+
+:host(.sticker--purple) {
+  --top: #b89bff;
+  --bottom: #7c4dff;
+  --rim: #5a2fd1;
+}
+
+:host(.sticker--pink) {
+  --top: #ff9cc6;
+  --bottom: #ff4f96;
+  --rim: #cf2f70;
+}
+
+:host(.sticker--grey) {
+  --top: #d5dae4;
+  --bottom: #a9b2c3;
+  --rim: #838da0;
+  --ink: #5b6477;
+}

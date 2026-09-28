@@ -1,31 +1,103 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { ProgressService } from '../../services/progress/progress';
 import { ReaderService } from '../../services/reader/reader';
 import { NarrationService } from '../../services/narration/narration';
 import { RecorderService } from '../../services/recorder/recorder';
+import { LiveReadingService } from '../../services/live-reading/live-reading';
+import { LiveWord } from '../../services/live-reading/word-alignment';
+import { AudioService } from '../../services/audio/audio';
+import { CelebrationService } from '../../services/celebration/celebration';
 import { PronunciationService } from '../../services/pronunciation/pronunciation';
 import {
+  BookPage,
+  ReadAloudSummary,
+  Celebrations,
   ChapterNode,
   ChapterProgress,
   PronunciationAttempt,
+  QuizReviewItem,
   StudentQuizQuestion,
 } from '../../models';
-import { Alert, Button, Spinner, Icon } from '../../shared/components';
-import { WordScramble } from './word-scramble/word-scramble';
+import { GameType, GameWinRecord } from '../../models/progress/progress.model';
+import {
+  Alert,
+  Button,
+  FlipBook,
+  FlipPage,
+  Icon,
+  LiveTranscript,
+  ReadingText,
+  ScoreModal,
+  Spinner,
+  StatusIndicator,
+  StickerIcon,
+} from '../../shared/components';
+import { WordScramble, WordChallenge } from './word-scramble/word-scramble';
 import { MissingWord } from './missing-word/missing-word';
 import { SentenceBuilder } from './sentence-builder/sentence-builder';
 
 type StepKey = 'story' | 'readaloud' | 'game' | 'quiz';
 
-/** Which game a chapter uses. Chapters rotate through the three in order. */
-type GameKind = 'scramble' | 'missing-word' | 'sentence-builder';
+/** One of the three mini-games every chapter offers. */
+type GameKind = GameType;
+
+/** A tile in the game picker. */
+interface GameOption {
+  kind: GameKind;
+  title: string;
+  icon: string;
+  /** The first win on this chapter, if there has been one. */
+  win: GameWinRecord | null;
+}
+
+/** An answer the child just picked, and the verdict on it. */
+interface QuizFeedback {
+  picked: string;
+  /** Null when the check could not be reached — the answer still counts. */
+  correct: boolean | null;
+  correctAnswer: string | null;
+  message: string;
+}
+
+/** A chapter's heading line, e.g. "Chapter 2" or "Chapter 2: The River". */
+const CHAPTER_HEADING = /^chapter\s+[\w-]+\b.{0,60}$/i;
+
+/** One paragraph of the chapter, read aloud and scored on its own. */
+interface ReadingPage {
+  key: string;
+  bookPageId: number;
+  /** Its place on its page, counted the way the server counts it. */
+  paragraphIndex: number;
+  text: string;
+}
+
+const PRAISE = ['Great job!', 'You got it!', 'Super reading!', 'Well done!', 'That is right!'];
+const ENCOURAGE = [
+  'Not quite — good try!',
+  'Almost! Look at the right answer.',
+  'Nice try — you will get the next one!',
+];
 
 @Component({
   selector: 'app-chapter-activities',
-  imports: [Alert, Button, Spinner, WordScramble, MissingWord, SentenceBuilder, Icon],
+  imports: [
+    Alert,
+    Button,
+    FlipBook,
+    Spinner,
+    WordScramble,
+    MissingWord,
+    SentenceBuilder,
+    Icon,
+    LiveTranscript,
+    ReadingText,
+    ScoreModal,
+    StatusIndicator,
+    StickerIcon,
+  ],
   templateUrl: './chapter-activities.html',
   styleUrl: './chapter-activities.scss',
 })
@@ -34,6 +106,9 @@ export class ChapterActivities implements OnInit, OnDestroy {
   private readerService = inject(ReaderService);
   private narrationService = inject(NarrationService);
   private recorder = inject(RecorderService);
+  private live = inject(LiveReadingService);
+  private audioCues = inject(AudioService);
+  private celebrationService = inject(CelebrationService);
   private pronunciationService = inject(PronunciationService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -51,6 +126,10 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly chapterNumber = signal(0);
   readonly storyText = signal<string | null>(null);
   readonly imageUrl = signal<string | null>(null);
+  /** The chapter's own pages, in order, for the flip book. Empty for a text-only chapter. */
+  readonly pages = signal<FlipPage[]>([]);
+  /** Whether the child has turned to the chapter's last page. */
+  readonly onLastPage = signal(false);
 
   // Progress flags for this chapter.
   readonly storyRead = signal(false);
@@ -72,34 +151,121 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly gameSentences = computed(() => this.pickSentences(this.storyText() ?? ''));
 
   /**
-   * Chapters take turns across the three games, so a pupil meets a different
-   * activity as they move through a book.
+   * The scramble game's words with the sentence each came from, so a child who
+   * is stuck gets a clue from the story rather than a blank stare. Unscrambling
+   * "hfsoer" with no context is a puzzle; unscrambling it under "The ___ ran
+   * across the field" is reading.
    */
+  readonly wordChallenges = computed<WordChallenge[]>(() =>
+    this.gameWords().map((word) => ({
+      word,
+      clue: this.clueFor(word, this.storyText() ?? ''),
+    })),
+  );
+
+  /** Mini-games already won on this chapter, with the points each paid. */
+  readonly gameWins = signal<GameWinRecord[]>([]);
+
+  /**
+   * The game the child picked. Until they pick, chapters still take turns
+   * suggesting a different one first, so a book does not open on the same
+   * game every time.
+   */
+  private readonly pickedGame = signal<GameKind | null>(null);
+
   readonly gameKind = computed<GameKind>(() => {
+    const picked = this.pickedGame();
+    if (picked) {
+      return picked;
+    }
+
     const kinds: GameKind[] = ['scramble', 'missing-word', 'sentence-builder'];
     const number = this.chapterNumber();
     return kinds[(Math.max(1, number) - 1) % kinds.length];
   });
 
-  readonly gameTitle = computed(() => {
-    switch (this.gameKind()) {
-      case 'missing-word':
-        return 'Missing word';
-      case 'sentence-builder':
-        return 'Build the sentence';
-      default:
-        return 'Word scramble';
-    }
+  /** Every game is playable; any one completes the step, the rest are bonus rounds. */
+  readonly gameOptions = computed<GameOption[]>(() => {
+    const wins = this.gameWins();
+    const options: Array<Omit<GameOption, 'win'>> = [
+      { kind: 'scramble', title: 'Word scramble', icon: 'shapes' },
+      { kind: 'missing-word', title: 'Missing word', icon: 'story' },
+      { kind: 'sentence-builder', title: 'Build the sentence', icon: 'layers' },
+    ];
+
+    return options.map((option) => ({
+      ...option,
+      win: wins.find((win) => win.game_type === option.kind) ?? null,
+    }));
   });
+
+  readonly gameTitle = computed(
+    () => this.gameOptions().find((option) => option.kind === this.gameKind())?.title ?? 'Game',
+  );
+
+  /** Whether the game on screen has been won before (it opens on its done screen). */
+  readonly currentGameWon = computed(() =>
+    this.gameWins().some((win) => win.game_type === this.gameKind()),
+  );
+
+  readonly gamePointsTotal = computed(() =>
+    this.gameWins().reduce((sum, win) => sum + win.points_awarded, 0),
+  );
+
+  /** What the last finished game earned, said under the game. */
+  readonly gameMessage = signal<string | null>(null);
 
   // Narration
   readonly narrating = signal(false);
   readonly narrationLoading = signal(false);
   private audio: HTMLAudioElement | null = null;
+  /** Bumped whenever narration stops or moves page, so a late answer is ignored. */
+  private narrationRun = 0;
+  private readonly flipBook = viewChild(FlipBook);
+  /** The flip-book page open now, counted from 0. */
+  readonly flipIndex = signal(0);
 
-  // Read-aloud
-  readonly recordingState = signal<'idle' | 'recording' | 'assessing'>('idle');
+  // Read-aloud, page by page: the same one-paragraph pages as the flip book.
+  readonly readingPages = signal<ReadingPage[]>([]);
+  readonly readIndex = signal(0);
+  /** Best score so far on each page, keyed `pageId:paragraph`; null until read. */
+  readonly pageScores = signal<Record<string, number | null>>({});
+  readonly readAloudSummary = signal<ReadAloudSummary | null>(null);
+
+  /** Chapters with pages are read aloud a page at a time; others in one go. */
+  readonly readByPage = computed(() => this.readingPages().length > 0);
+  /** What the child is reading, in the words the feedback uses. */
+  readonly readNoun = computed(() => (this.readByPage() ? 'page' : 'story'));
+  readonly currentReadPage = computed(() => this.readingPages()[this.readIndex()] ?? null);
+  readonly isLastReadPage = computed(() => this.readIndex() >= this.readingPages().length - 1);
+
+  /** The words being read aloud right now: this page's, or the whole story's. */
+  readonly readText = computed(() =>
+    this.readByPage() ? (this.currentReadPage()?.text ?? null) : this.storyText(),
+  );
+
+  readonly recordingState = signal<'idle' | 'connecting' | 'recording' | 'assessing' | 'retrying'>(
+    'idle',
+  );
   readonly result = signal<PronunciationAttempt | null>(null);
+  readonly celebrations = signal<Celebrations | null>(null);
+  readonly showScore = signal(false);
+  readonly paceHint = signal<string | null>(null);
+  readonly retryTarget = signal<LiveWord | null>(null);
+  readonly liveAvailable = signal(true);
+
+  /** The story, word by word, coloured as the child reads it. */
+  readonly words = this.live.words;
+  readonly partialTranscript = this.live.partial;
+  readonly liveTranscript = this.live.transcript;
+  readonly liveMeters = this.live.meters;
+  readonly livePace = this.live.pace;
+  readonly liveWpm = this.live.wordsPerMinute;
+  readonly liveProgress = this.live.score;
+
+  readonly isBusy = computed(() =>
+    ['connecting', 'assessing', 'retrying'].includes(this.recordingState()),
+  );
 
   /**
    * Why the last read-aloud fell short, in words a pupil can act on. Reading
@@ -116,34 +282,68 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
     if (attempt.is_off_script) {
       return (
-        `That did not match the story — only ${matched}% of the words matched. ` +
-        'Read the words in the story out loud and try again.'
+        `That did not match the ${this.readNoun()} — only ${matched}% of the words matched. ` +
+        `Read the words on the ${this.readNoun()} out loud and try again.`
       );
     }
     if (matched < this.passMark) {
       return (
-        `You read part of the story — ${matched}% of the words. ` +
-        'Read the whole story out loud and try again.'
+        `You read part of the ${this.readNoun()} — ${matched}% of the words. ` +
+        `Read the whole ${this.readNoun()} out loud and try again.`
       );
     }
+    // Pace advice only when pace was actually the problem — "read a little
+    // slower" is unhelpful to a child who was already too slow.
+    const pace = this.paceHint();
+
+    if (this.readByPage()) {
+      return (
+        `You scored ${Math.round(attempt.effective_score ?? 0)} on this page — ` +
+        `${pace ?? 'practise the red words'}, or read it again. Your pages need to average ` +
+        `${this.passMark} to finish this step.`
+      );
+    }
+
     return (
-      `You scored ${Math.round(attempt.pron_score ?? 0)}. You need ${this.passMark} to finish ` +
-      'this step — read a little slower and try again.'
+      `You scored ${Math.round(attempt.effective_score ?? 0)}. You need ${this.passMark} to ` +
+      `finish this step — ${pace ?? 'practise the red words and try again'}.`
     );
   });
 
   // Quiz
   readonly quizQuestions = signal<StudentQuizQuestion[]>([]);
   readonly answers = signal<Record<number, string>>({});
-  readonly quizResult = signal<{ score: number; correct: number; total: number; passed: boolean } | null>(null);
+  readonly quizResult = signal<{
+    score: number;
+    correct: number;
+    total: number;
+    passed: boolean;
+    review: QuizReviewItem[];
+  } | null>(null);
+
+  /** The quiz goes one question at a time, so each answer gets its own verdict. */
+  readonly quizIndex = signal(0);
+  readonly quizFeedback = signal<QuizFeedback | null>(null);
+  readonly quizChecking = signal(false);
+  readonly quizSubmitting = signal(false);
+
+  readonly currentQuestion = computed(() => this.quizQuestions()[this.quizIndex()] ?? null);
+  readonly isLastQuestion = computed(() => this.quizIndex() >= this.quizQuestions().length - 1);
+
+  /** The book's level, so the live pace meter uses the right words-a-minute band. */
+  private readonly readingLevel = signal<string | null>(null);
 
   ngOnInit(): void {
     forkJoin({
       reader: this.readerService.book(this.bookId),
       progress: this.progressService.book(this.bookId),
       quiz: this.progressService.quiz(this.chapterId),
+      // Stars are a nicety: an API without the endpoint must not stop the chapter opening.
+      games: this.progressService
+        .chapterGames(this.chapterId)
+        .pipe(catchError(() => of({ data: [] as GameWinRecord[] }))),
     }).subscribe({
-      next: ({ reader, progress, quiz }) => {
+      next: ({ reader, progress, quiz, games }) => {
         const chapter = (reader.data.chapters ?? []).find((entry) => entry.id === this.chapterId);
         const node = progress.data.chapters.find((entry) => entry.id === this.chapterId);
 
@@ -154,10 +354,27 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
         this.title.set(chapter?.title ?? node?.title ?? 'Chapter');
         this.chapterNumber.set(chapter?.chapter_number ?? node?.chapter_number ?? 0);
-        this.storyText.set(chapter?.story_text ?? null);
+        const pages = (reader.data.pages ?? [])
+          .filter((page) => page.chapter_id === this.chapterId)
+          .sort((a, b) => a.page_number - b.page_number);
+        const flipPages = this.paragraphPages(pages);
+        this.pages.set(flipPages);
+        this.onLastPage.set(flipPages.length <= 1);
+        this.readingPages.set(this.readingPagesOf(pages));
+        this.loadReadAloudProgress();
+
+        // Games and read-aloud need the chapter's words. Fall back to the pages'
+        // own text when the chapter has none of its own.
+        const pagesText = pages
+          .map((page) => page.text?.trim())
+          .filter(Boolean)
+          .join('\n\n');
+        this.storyText.set(chapter?.story_text || pagesText || null);
         this.imageUrl.set(chapter?.image_url ?? null);
+        this.readingLevel.set(progress.data.reading_level ?? null);
         this.applyProgress(node?.progress ?? null);
         this.quizQuestions.set(quiz.data);
+        this.gameWins.set(games.data ?? []);
         this.loading.set(false);
       },
       error: (response: HttpErrorResponse) => {
@@ -169,6 +386,136 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopNarration();
+    // The microphone must not stay open when the child navigates away.
+    void this.live.stop();
+  }
+
+  /**
+   * One flip-book page per paragraph, so a young reader faces a few lines at a
+   * time rather than a wall of words. A "Chapter 2" line is not a paragraph of
+   * its own: it heads the page that follows it. A scan's picture stays with
+   * its page's first paragraph.
+   */
+  private paragraphPages(pages: BookPage[]): FlipPage[] {
+    const flip: FlipPage[] = [];
+
+    for (const page of pages) {
+      const paragraphs = (page.text ?? '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      let heading: string | null = null;
+      let imageUrl = page.image_url;
+
+      if (paragraphs.length && CHAPTER_HEADING.test(paragraphs[0])) {
+        heading = paragraphs.shift() ?? null;
+      }
+
+      // A picture with no words is still a page.
+      if (!paragraphs.length) {
+        if (imageUrl || heading) {
+          flip.push({ id: `${page.id}`, imageUrl, heading });
+        }
+        continue;
+      }
+
+      paragraphs.forEach((text, index) => {
+        flip.push({
+          id: `${page.id}-${index}`,
+          imageUrl,
+          heading,
+          text,
+          narration: { bookPageId: page.id, paragraphIndex: index },
+        });
+        imageUrl = null;
+        heading = null;
+      });
+    }
+
+    return flip;
+  }
+
+  /** Each paragraph of the chapter, to read aloud one at a time — cut like the flip book's. */
+  private readingPagesOf(pages: BookPage[]): ReadingPage[] {
+    return pages.flatMap((page) => {
+      const paragraphs = (page.text ?? '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (paragraphs.length && CHAPTER_HEADING.test(paragraphs[0])) {
+        paragraphs.shift();
+      }
+
+      return paragraphs.map((text, paragraphIndex) => ({
+        key: `${page.id}:${paragraphIndex}`,
+        bookPageId: page.id,
+        paragraphIndex,
+        text,
+      }));
+    });
+  }
+
+  /** Which pages were already read aloud, so a child picks up where they stopped. */
+  private loadReadAloudProgress(): void {
+    if (!this.readByPage()) {
+      return;
+    }
+
+    this.progressService.readAloud(this.chapterId).subscribe({
+      next: (response) => {
+        this.applyReadAloud(response.data);
+        const firstUnread = this.readingPages().findIndex(
+          (page) => this.pageScores()[page.key] == null,
+        );
+        this.readIndex.set(Math.max(firstUnread, 0));
+
+        // Already on the step: show the page we just moved to, not the first one.
+        if (this.activeStep() === 'readaloud' && this.recordingState() === 'idle' && !this.result()) {
+          this.layOutReadText();
+        }
+      },
+      // Progress is a nicety here; reading still works without it.
+      error: () => undefined,
+    });
+  }
+
+  private applyReadAloud(summary: ReadAloudSummary): void {
+    this.readAloudSummary.set(summary);
+    this.pageScores.set(
+      Object.fromEntries(
+        summary.pages.map((page) => [`${page.book_page_id}:${page.paragraph_index}`, page.best_score]),
+      ),
+    );
+
+    if (summary.passed) {
+      this.pronunciationPassed.set(true);
+    }
+  }
+
+  /** Best score so far on a reading page, or null when it has not been read yet. */
+  scoreOf(page: ReadingPage): number | null {
+    return this.pageScores()[page.key] ?? null;
+  }
+
+  /** Move to another page of the read-aloud and put its words on screen. */
+  goToReadPage(index: number): void {
+    if (index < 0 || index >= this.readingPages().length) {
+      return;
+    }
+    if (this.isBusy() || this.recordingState() === 'recording' || this.retryTarget()) {
+      return;
+    }
+
+    this.readIndex.set(index);
+    this.layOutReadText();
+  }
+
+  /** Show the words about to be read, uncoloured, before recording starts. */
+  private layOutReadText(): void {
+    this.result.set(null);
+    this.showScore.set(false);
+    this.live.prepare(this.readText() ?? '', this.readingLevel());
   }
 
   private applyProgress(progress: ChapterProgress | null): void {
@@ -182,6 +529,11 @@ export class ChapterActivities implements OnInit, OnDestroy {
   go(step: StepKey): void {
     this.stopNarration();
     this.activeStep.set(step);
+
+    // Put the page's words up straight away, so the child sees what to read.
+    if (step === 'readaloud' && this.recordingState() === 'idle' && !this.retryTarget()) {
+      this.layOutReadText();
+    }
   }
 
   // ---- Story ----
@@ -199,6 +551,16 @@ export class ChapterActivities implements OnInit, OnDestroy {
       this.stopNarration();
       return;
     }
+
+    // A chapter with pages is read to the child page by page, like a
+    // read-along book — each page takes a second, not the whole chapter's minute.
+    if (this.pages().length) {
+      this.errorMessage.set(null);
+      this.narrating.set(true);
+      this.playFlipPage(this.flipIndex());
+      return;
+    }
+
     const text = this.storyText();
     if (!text) {
       this.errorMessage.set('This chapter has no text to read aloud yet.');
@@ -230,85 +592,437 @@ export class ChapterActivities implements OnInit, OnDestroy {
   }
 
   stopNarration(): void {
+    this.narrationRun++;
+    this.stopAudio();
+    this.narrating.set(false);
+    this.narrationLoading.set(false);
+  }
+
+  /** The flip book turned — by hand, or by the read-along moving on. */
+  onFlipPage(index: number): void {
+    this.flipIndex.set(index);
+    this.onLastPage.set(index === this.pages().length - 1);
+
+    if (this.narrating()) {
+      this.playFlipPage(index);
+    }
+  }
+
+  /**
+   * Read one flip-book page out loud, then turn to the next and carry on
+   * until the end of the chapter. A page with no words (a picture, a
+   * heading) is simply turned past.
+   */
+  private playFlipPage(index: number): void {
+    const run = ++this.narrationRun;
+    const source = this.pages()[index]?.narration;
+    this.stopAudio();
+
+    if (!source) {
+      this.afterFlipPage(index, run);
+      return;
+    }
+
+    this.narrationLoading.set(true);
+
+    this.narrationService.getPageNarration(source.bookPageId, source.paragraphIndex).subscribe({
+      next: (blob) => {
+        // The child may have stopped, or turned the page, while this loaded.
+        if (run !== this.narrationRun || !this.narrating()) {
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        this.audio = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          this.afterFlipPage(index, run);
+        };
+        void audio.play();
+        this.narrationLoading.set(false);
+      },
+      error: (response: HttpErrorResponse) => {
+        if (run !== this.narrationRun) {
+          return;
+        }
+        this.stopNarration();
+        this.errorMessage.set(this.narrationError(response.status));
+      },
+    });
+  }
+
+  /** A page has been read: turn to the next one, or stop at the end. */
+  private afterFlipPage(index: number, run: number): void {
+    if (run !== this.narrationRun || !this.narrating()) {
+      return;
+    }
+
+    if (index >= this.pages().length - 1) {
+      this.stopNarration();
+      return;
+    }
+
+    // A breath between pages; turning the page starts the next one reading.
+    setTimeout(() => {
+      if (run === this.narrationRun && this.narrating()) {
+        this.flipBook()?.next();
+      }
+    }, 600);
+  }
+
+  private stopAudio(): void {
     if (this.audio) {
+      this.audio.onended = null;
       this.audio.pause();
       this.audio = null;
     }
-    this.narrating.set(false);
   }
 
   // ---- Read aloud (pronunciation) ----
+
   async toggleRecording(): Promise<void> {
-    if (!this.storyText()) {
+    const text = this.readText();
+
+    if (!text) {
       this.errorMessage.set('There is no text to read on this chapter.');
       return;
     }
 
     if (this.recordingState() === 'recording') {
-      this.recordingState.set('assessing');
-      try {
-        const audio = await this.recorder.stop();
-        this.pronunciationService.assess(audio, { chapterId: this.chapterId }).subscribe({
-          next: (response) => {
-            this.result.set(response.data);
-            if ((response.data.pron_score ?? 0) >= this.passMark) {
-              this.pronunciationPassed.set(true);
-            }
-            this.recordingState.set('idle');
-          },
-          error: (response: HttpErrorResponse) => {
-            this.recordingState.set('idle');
-            this.errorMessage.set(this.assessError(response.status));
-          },
-        });
-      } catch {
-        this.recordingState.set('idle');
-        this.errorMessage.set('Could not process the recording. Please try again.');
-      }
+      await this.finishReading();
+      return;
+    }
+
+    if (this.isBusy()) {
       return;
     }
 
     this.errorMessage.set(null);
     this.result.set(null);
+    this.celebrations.set(null);
+    this.showScore.set(false);
     this.stopNarration();
+    this.recordingState.set('connecting');
+
     try {
-      await this.recorder.start();
+      if (this.liveAvailable()) {
+        await this.live.start(text, this.readingLevel());
+      } else {
+        this.live.prepare(text, this.readingLevel());
+        await this.recorder.start();
+      }
+
+      this.recordingState.set('recording');
+    } catch (error) {
+      this.recordingState.set('idle');
+
+      if ((error as { name?: string })?.name === 'NotAllowedError') {
+        this.errorMessage.set('Please allow microphone access to record your reading.');
+        return;
+      }
+
+      // Live colouring is a bonus; the real score comes from the recording, so
+      // drop back to plain recording rather than blocking the child.
+      this.liveAvailable.set(false);
+
+      try {
+        this.live.prepare(text, this.readingLevel());
+        await this.recorder.start();
+        this.recordingState.set('recording');
+      } catch {
+        this.errorMessage.set('Could not start recording. Please try again.');
+      }
+    }
+  }
+
+  private async finishReading(): Promise<void> {
+    this.recordingState.set('assessing');
+
+    let audio: Blob | null = null;
+
+    try {
+      audio = this.liveAvailable() ? await this.live.stop() : await this.recorder.stop();
+    } catch {
+      this.recordingState.set('idle');
+      this.errorMessage.set('Could not process the recording. Please try again.');
+      return;
+    }
+
+    if (!audio) {
+      this.recordingState.set('idle');
+      return;
+    }
+
+    const page = this.readByPage() ? this.currentReadPage() : null;
+    const target = page
+      ? { chapterId: this.chapterId, bookPageId: page.bookPageId, paragraphIndex: page.paragraphIndex }
+      : { chapterId: this.chapterId };
+
+    this.pronunciationService.assess(audio, target).subscribe({
+      next: (response) => {
+        this.result.set(response.data);
+        this.celebrations.set(response.celebrations);
+        this.paceHint.set(response.meta.pace_hint);
+        this.applyServerWords(response.data);
+
+        if (response.meta.read_aloud) {
+          // Page by page, the chapter passes on all its pages, not on this one.
+          this.applyReadAloud(response.meta.read_aloud);
+        } else if (response.data.passed) {
+          this.pronunciationPassed.set(true);
+        }
+
+        this.recordingState.set('idle');
+        this.showScore.set(true);
+      },
+      error: (response: HttpErrorResponse) => {
+        this.recordingState.set('idle');
+        this.errorMessage.set(this.assessError(response.status));
+      },
+    });
+  }
+
+  /** Repaint the story from the server's verdict, which saw the whole reading. */
+  private applyServerWords(attempt: PronunciationAttempt): void {
+    const current = this.words();
+
+    if (!attempt.words?.length || attempt.words.length !== current.length) {
+      return;
+    }
+
+    this.live.words.set(
+      current.map((word, position) => {
+        const scored = attempt.words![position];
+        const correct =
+          scored.error_type === 'None' &&
+          (scored.accuracy_score === null || scored.accuracy_score >= 60);
+
+        return {
+          ...word,
+          accuracy: scored.accuracy_score,
+          state:
+            scored.error_type === 'Omission'
+              ? ('omitted' as const)
+              : correct
+                ? ('correct' as const)
+                : ('incorrect' as const),
+        };
+      }),
+    );
+  }
+
+  /** The child wants another go at one word. */
+  async retryWord(word: LiveWord): Promise<void> {
+    if (this.isBusy() || this.recordingState() === 'recording') {
+      return;
+    }
+
+    this.errorMessage.set(null);
+    this.retryTarget.set(word);
+    this.speakWord(word.text);
+
+    if (!this.liveAvailable()) {
+      return;
+    }
+
+    this.recordingState.set('connecting');
+
+    try {
+      await this.live.startWordRetry(word.index);
       this.recordingState.set('recording');
     } catch {
-      this.errorMessage.set('Please allow microphone access to record your reading.');
+      this.recordingState.set('idle');
+      this.retryTarget.set(null);
+      this.errorMessage.set('Could not listen for that word. Please try again.');
     }
   }
 
-  scoreTone(score: number | null): string {
-    if (score === null) {
-      return 'try';
+  async finishWordRetry(): Promise<void> {
+    this.recordingState.set('retrying');
+
+    try {
+      const outcome = await this.live.finishWordRetry();
+      this.audioCues.playResult(outcome.correct);
+    } catch {
+      this.errorMessage.set('Could not check that word. Please try again.');
+    } finally {
+      this.retryTarget.set(null);
+      this.recordingState.set('idle');
     }
-    if (score >= 90) {
-      return 'great';
-    }
-    if (score >= 70) {
-      return 'good';
-    }
-    return 'try';
   }
+
+  /** Colour band for a live meter — encouraging, never alarming. */
+  meterTone(value: number): 'great' | 'good' | 'grow' {
+    return value >= 85 ? 'great' : value >= this.passMark ? 'good' : 'grow';
+  }
+
+  cancelWordRetry(): void {
+    // Puts the whole story back; a plain stop() would leave only the retry word.
+    void this.live.abandonWordRetry();
+    this.retryTarget.set(null);
+    this.recordingState.set('idle');
+  }
+
+  /** Say one word to the child, slowly. */
+  speakWord(word: string): void {
+    try {
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.75;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utterance);
+    } catch {
+      /* no speech synthesis on this device */
+    }
+  }
+
+  dismissScore(): void {
+    this.showScore.set(false);
+  }
+
+  async readAgain(): Promise<void> {
+    this.showScore.set(false);
+    this.result.set(null);
+    this.live.prepare(this.readText() ?? '', this.readingLevel());
+    await this.toggleRecording();
+  }
+
+  continueAfterScore(): void {
+    this.showScore.set(false);
+
+    // Page by page, "next" turns to the next page until the last one.
+    if (this.readByPage() && !this.isLastReadPage()) {
+      this.goToReadPage(this.readIndex() + 1);
+      return;
+    }
+
+    if (this.pronunciationPassed()) {
+      this.go('game');
+    }
+  }
+
+  /** The score popup's forward button, which says where it goes. */
+  readonly scoreNextLabel = computed(() =>
+    this.readByPage() && !this.isLastReadPage() ? 'Next page' : 'Keep going',
+  );
 
   // ---- Game ----
-  onGameCompleted(): void {
-    this.progressService.completeGame(this.chapterId).subscribe({
-      next: (response) => this.applyProgress(response.data),
+  pickGame(kind: GameKind): void {
+    this.pickedGame.set(kind);
+    this.gameMessage.set(null);
+  }
+
+  /** Stars for the picker: one for a win, two for a win with no mistakes. */
+  starsFor(option: GameOption): number {
+    if (!option.win) {
+      return 0;
+    }
+    return option.win.perfect ? 2 : 1;
+  }
+
+  onGameCompleted(kind: GameKind, mistakes: number): void {
+    const title = this.gameOptions().find((option) => option.kind === kind)?.title ?? 'Game';
+
+    this.progressService.completeGame(this.chapterId, kind, mistakes).subscribe({
+      next: (response) => {
+        this.applyProgress(response.data);
+
+        const game = response.game;
+        if (game) {
+          this.gameWins.set(game.games);
+
+          if (game.points_earned > 0) {
+            this.gameMessage.set(
+              game.perfect
+                ? `+${game.points_earned} points — no mistakes, bonus stars!`
+                : `+${game.points_earned} points!`,
+            );
+            this.celebrationService.pushPoints(
+              game.points_earned,
+              `${title} won!`,
+              game.perfect ? 'No mistakes — bonus points!' : 'Great playing!',
+            );
+          } else {
+            // Replays are for fun; say so, so the missing points are not a surprise.
+            this.gameMessage.set('You already won this one. Try another game for more stars!');
+          }
+        }
+
+        // Winning the game can finish the chapter, which can earn a badge.
+        this.celebrationService.push(response.celebrations);
+      },
     });
   }
 
   // ---- Quiz ----
+
+  /** Picking an answer checks it straight away; the verdict stays until "Next". */
   choose(questionId: number, choice: string): void {
+    if (this.quizFeedback() || this.quizChecking()) {
+      return;
+    }
+
     this.answers.update((current) => ({ ...current, [questionId]: choice }));
+    this.quizChecking.set(true);
+
+    this.progressService.checkQuizAnswer(this.chapterId, questionId, choice).subscribe({
+      next: (response) => {
+        const { correct, correct_answer } = response.data;
+        this.quizFeedback.set({
+          picked: choice,
+          correct,
+          correctAnswer: correct_answer,
+          message: this.pickMessage(correct ? PRAISE : ENCOURAGE),
+        });
+        this.audioCues.playResult(correct);
+        this.quizChecking.set(false);
+      },
+      error: () => {
+        // The answer is still graded on submit; only the instant verdict is lost.
+        this.quizFeedback.set({
+          picked: choice,
+          correct: null,
+          correctAnswer: null,
+          message: 'Answer saved!',
+        });
+        this.quizChecking.set(false);
+      },
+    });
   }
 
   isChosen(questionId: number, choice: string): boolean {
     return this.answers()[questionId] === choice;
   }
 
+  /** Green for the right answer (picked or not), red for a wrong pick. */
+  choiceState(choice: string): 'right' | 'wrong' | null {
+    const feedback = this.quizFeedback();
+    if (!feedback || feedback.correct === null) {
+      return null;
+    }
+    if (choice === feedback.correctAnswer) {
+      return 'right';
+    }
+    return choice === feedback.picked ? 'wrong' : null;
+  }
+
+  nextQuestion(): void {
+    if (this.isLastQuestion()) {
+      this.submitQuiz();
+      return;
+    }
+
+    this.quizFeedback.set(null);
+    this.quizIndex.update((index) => index + 1);
+  }
+
   submitQuiz(): void {
+    if (this.quizSubmitting()) {
+      return;
+    }
+    this.quizSubmitting.set(true);
+
     this.progressService.submitQuiz(this.chapterId, this.answers()).subscribe({
       next: (response) => {
         const result = response.data;
@@ -317,15 +1031,35 @@ export class ChapterActivities implements OnInit, OnDestroy {
           correct: result.correct,
           total: result.total,
           passed: result.passed,
+          review: result.review ?? [],
         });
+        this.quizSubmitting.set(false);
         this.applyProgress(result.progress);
+        this.audioCues.playResult(result.passed);
+        // A passed quiz can finish the chapter — and the book behind it.
+        this.celebrationService.push(response.celebrations);
+      },
+      error: (response: HttpErrorResponse) => {
+        this.quizSubmitting.set(false);
+        this.errorMessage.set(response.error?.message ?? 'Could not send your answers. Please try again.');
       },
     });
+  }
+
+  /** The question text for a summary row. */
+  questionText(questionId: number): string {
+    return this.quizQuestions().find((question) => question.id === questionId)?.question_text ?? '';
   }
 
   retryQuiz(): void {
     this.answers.set({});
     this.quizResult.set(null);
+    this.quizFeedback.set(null);
+    this.quizIndex.set(0);
+  }
+
+  private pickMessage(options: string[]): string {
+    return options[Math.floor(Math.random() * options.length)];
   }
 
   finish(): void {
@@ -350,6 +1084,22 @@ export class ChapterActivities implements OnInit, OnDestroy {
       return ['read', 'story', 'quest', 'learn', 'books'];
     }
     return words;
+  }
+
+  /**
+   * The sentence this word appears in, with the word itself blanked out.
+   * Null when it cannot be found in one short enough to be a help.
+   */
+  private clueFor(word: string, text: string): string | null {
+    const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+
+    const sentence = this.pickSentences(text).find((candidate) => pattern.test(candidate));
+
+    if (!sentence || sentence.split(' ').length > 20) {
+      return null;
+    }
+
+    return sentence.replace(pattern, '_____');
   }
 
   /** Split the story into clean sentences for the word/sentence games. */

@@ -1,0 +1,214 @@
+@use 'abstracts' as *;
+
+.report {
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-4);
+    font-size: var(--font-size-lg);
+  }
+
+  &__note {
+    margin: var(--space-3) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+// ---- Headline numbers ------------------------------------------------
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  text-align: center;
+
+  &__value {
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--color-primary-dark);
+  }
+
+  &__label {
+    margin: var(--space-1) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__band {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--color-text-soft);
+  }
+}
+
+// ---- Missed words ----------------------------------------------------
+
+.missed {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 10rem) 1fr auto;
+    align-items: center;
+    gap: var(--space-3);
+
+    @media (max-width: $breakpoint-sm) {
+      grid-template-columns: 1fr auto;
+
+      .missed__bar {
+        grid-column: 1 / -1;
+      }
+    }
+  }
+
+  &__word {
+    font-weight: 800;
+    font-size: 1.05rem;
+  }
+
+  &__count {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+}
+
+// ---- Trend -----------------------------------------------------------
+
+.trend {
+  width: 100%;
+  height: 160px;
+  overflow: visible;
+
+  &__line {
+    fill: none;
+    stroke: var(--color-primary);
+    // Non-scaling so the stretched viewBox does not squash the stroke.
+    vector-effect: non-scaling-stroke;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  &__pass {
+    stroke: var(--color-text-soft);
+    vector-effect: non-scaling-stroke;
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+  }
+}
+
+// ---- Dimensions & pace -----------------------------------------------
+
+.dims {
+  display: grid;
+  gap: var(--space-3);
+
+  &__label {
+    display: block;
+    margin-bottom: var(--space-1);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-text-muted);
+  }
+}
+
+.pace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+
+  &__chip {
+    padding: 0.2rem 0.7rem;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+
+    &--slow,
+    &--fast {
+      background: var(--color-warning-soft);
+      color: #9a5100;
+    }
+
+    &--good {
+      background: var(--color-success-soft);
+      color: #0f7a45;
+    }
+  }
+}
+
+// ---- History ---------------------------------------------------------
+
+.history {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+  }
+
+  &__when {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__score {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-weight: 800;
+  }
+
+  &__missed,
+  &__pace {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__audio {
+    height: 32px;
+    margin-left: auto;
+    max-width: 16rem;
+  }
+
+  &__note {
+    flex-basis: 100%;
+    margin: 0;
+    font-style: italic;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+// A printed report should not waste ink on buttons nobody can press.
+@media print {
+  .report__toolbar,
+  .history__audio {
+    display: none;
+  }
+}

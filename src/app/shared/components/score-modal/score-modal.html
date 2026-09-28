@@ -1,0 +1,108 @@
+@if (open() && attempt(); as result) {
+  <div class="score">
+    <div class="score__overlay" (click)="closed.emit()"></div>
+
+    <div class="score__dialog score__dialog--{{ tone() }}" role="dialog" aria-modal="true">
+      @if (passed()) {
+        <div class="score__confetti" aria-hidden="true">
+          @for (piece of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; track piece) {
+            <span class="score__confetti-piece" [style.--i]="piece"></span>
+          }
+        </div>
+      }
+
+      <header class="score__header">
+        <div class="score__ring" [style.--score]="(score() ?? 0) / 100">
+          <span class="score__value">{{ score() ?? '—' }}<small>%</small></span>
+        </div>
+
+        <h2 class="score__headline">{{ headline() }}</h2>
+
+        <p class="score__verdict score__verdict--{{ passed() ? 'pass' : 'fail' }}">
+          <app-icon [name]="passed() ? 'check-circle' : 'retry'" size="sm" />
+          {{ passed() ? 'Passed' : 'Not passed yet' }}
+        </p>
+
+        @if (advice()) {
+          <p class="score__advice">{{ advice() }}</p>
+        }
+      </header>
+
+      @if (milestoneLabel()) {
+        <p class="score__milestone">
+          <app-icon name="celebrate" size="md" />
+          {{ milestoneLabel() }}
+        </p>
+      }
+
+      @if (rewards().length) {
+        <section class="score__rewards" aria-label="What you earned">
+          @for (reward of rewards(); track reward.name) {
+            <div class="score__reward">
+              <app-icon name="trophy" size="lg" />
+              <div>
+                <p class="score__reward-name">{{ reward.name }}</p>
+                @if (reward.description) {
+                  <p class="score__reward-note">{{ reward.description }}</p>
+                }
+              </div>
+              @if (reward.points) {
+                <span class="score__reward-points">+{{ reward.points }}</span>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      @if (dimensions().length) {
+        <section class="score__dimensions" aria-label="How you did">
+          @for (dimension of dimensions(); track dimension.hint) {
+            <div class="score__dimension">
+              <span class="score__dimension-label">{{ dimension.label }}</span>
+              <app-progress-bar [percent]="dimension.value ?? 0" />
+            </div>
+          }
+        </section>
+      }
+
+      @if (result.words_per_minute && describePace(result.pace)) {
+        <p class="score__pace score__pace--{{ result.pace }}">
+          <app-icon name="gauge" size="sm" />
+          {{ describePace(result.pace) }} — {{ result.words_per_minute }} words a minute
+        </p>
+      }
+
+      @if (practiceWords().length) {
+        <section class="score__practice" aria-label="Words to practise">
+          <h3 class="score__practice-title">Words to practise</h3>
+          <ul class="score__practice-list">
+            @for (word of practiceWords(); track word.index) {
+              <li class="score__practice-word">{{ word.text }}</li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (result.recognized_text) {
+        <details class="score__transcript">
+          <summary>What we heard you say</summary>
+          <p>{{ result.recognized_text }}</p>
+        </details>
+      }
+
+      <footer class="score__actions">
+        <app-button variant="ghost" (clicked)="retry.emit()">
+          <app-icon name="retry" size="sm" /> Read it again
+        </app-button>
+
+        @if (passed() || alwaysNext()) {
+          <app-button (clicked)="next.emit()">
+            {{ nextLabel() }} <app-icon name="forward" size="sm" />
+          </app-button>
+        } @else {
+          <app-button variant="secondary" (clicked)="closed.emit()">Close</app-button>
+        }
+      </footer>
+    </div>
+  </div>
+}

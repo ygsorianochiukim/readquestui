@@ -1,4 +1,5 @@
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { AudioService } from '../../../services/audio/audio';
 import { Button, Icon } from '../../../shared/components';
 
 interface Round {
@@ -19,16 +20,21 @@ interface Round {
   styleUrl: './missing-word.scss',
 })
 export class MissingWord {
+  private audio = inject(AudioService);
+
   /** Sentences taken from the chapter's story by the parent. */
   readonly sentences = input<string[]>([]);
   readonly alreadyDone = input<boolean>(false);
 
-  readonly completed = output<void>();
+  /** Emits how many mistakes the child made on the way, for the no-mistakes bonus. */
+  readonly completed = output<number>();
 
   readonly index = signal(0);
   readonly picked = signal<string | null>(null);
   readonly finished = signal(false);
   readonly correctCount = signal(0);
+  /** Wrong picks this round; a clean run earns the bonus. */
+  readonly mistakes = signal(0);
 
   readonly rounds = computed(() => this.buildRounds(this.sentences()));
   readonly total = computed(() => this.rounds().length);
@@ -47,14 +53,64 @@ export class MissingWord {
     });
   }
 
+  readonly speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
   pick(choice: string): void {
     if (this.picked() && this.isCorrect()) {
       return; // already solved this round
     }
+
+    const correct = choice === this.current()?.answer;
+
     this.picked.set(choice);
-    if (choice === this.current()?.answer) {
-      this.correctCount.update((value) => value + 1);
+    this.audio.playResult(correct);
+
+    if (!correct) {
+      this.mistakes.update((value) => value + 1);
     }
+
+    if (correct) {
+      this.correctCount.update((value) => value + 1);
+      // Hearing the finished sentence is the point of the game — it turns a
+      // multiple-choice tap back into reading.
+      this.speak(this.current()!.masked.replace('______', choice));
+    }
+  }
+
+  /** Read the sentence out, blank and all, for a child who cannot read it yet. */
+  hearSentence(): void {
+    const round = this.current();
+
+    if (round) {
+      this.speak(round.masked.replace('______', 'blank'));
+    }
+  }
+
+  /** Say one of the choices, so a child can hear the word before picking it. */
+  hearChoice(choice: string, event: Event): void {
+    event.stopPropagation();
+    this.speak(choice);
+  }
+
+  private speak(text: string): void {
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.8;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utterance);
+    } catch {
+      /* no speech synthesis on this device */
+    }
+  }
+
+  /** Play the sentences again from the start — for fun, once it has been won. */
+  restart(): void {
+    this.index.set(0);
+    this.picked.set(null);
+    this.correctCount.set(0);
+    this.mistakes.set(0);
+    this.finished.set(false);
   }
 
   next(): void {
@@ -63,7 +119,7 @@ export class MissingWord {
       this.picked.set(null);
     } else {
       this.finished.set(true);
-      this.completed.emit();
+      this.completed.emit(this.mistakes());
     }
   }
 

@@ -5,12 +5,12 @@ import { RewardService } from '../../services/reward/reward';
 import { ProgressService } from '../../services/progress/progress';
 import { AchievementService } from '../../services/achievement/achievement';
 import { Achievement, Badge, BookOverview } from '../../models';
-import { Button, Spinner, Icon } from '../../shared/components';
+import { Button, Spinner, Icon, StickerIcon } from '../../shared/components';
 import { NextTrophy } from './next-trophy/next-trophy';
 
 @Component({
   selector: 'app-student-home',
-  imports: [Button, Spinner, NextTrophy, Icon],
+  imports: [Button, Spinner, NextTrophy, Icon, StickerIcon],
   templateUrl: './student-home.html',
   styleUrl: './student-home.scss',
 })

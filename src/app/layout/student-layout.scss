@@ -6,6 +6,12 @@
 .game {
   position: relative;
   min-height: 100dvh;
+  // Children's screens run a step larger than the teacher dashboard. The whole
+  // scale lifts together rather than a size being hand-set per component, so
+  // nothing drifts out of proportion.
+  --font-size-sm: 0.95rem;
+  --font-size-base: 1.075rem;
+  --font-size-lg: 1.3rem;
   // `clip` prevents horizontal overflow WITHOUT becoming a scroll container,
   // so the sticky HUD keeps working. (`hidden` would force overflow-y:auto.)
   overflow-x: clip;
@@ -17,7 +23,11 @@
 
   &__content {
     position: relative;
-    z-index: 1;
+    // Deliberately no z-index. Setting one here makes this a stacking context,
+    // which traps every modal rendered inside the router outlet at this level —
+    // the bottom dock and the scrim then paint straight over them, however high
+    // the modal's own z-index is. Sitting above the fixed scenery is handled by
+    // document order instead: the sky is earlier in the markup.
     max-width: 1180px;
     margin: 0 auto;
     padding: var(--space-4) var(--space-4) var(--space-6);
@@ -31,7 +41,7 @@
     right: 0;
     bottom: 0;
     height: 130px;
-    z-index: 25;
+    z-index: var(--z-scrim);
     pointer-events: none;
     background: linear-gradient(0deg, #8fd3ff 0%, rgba(143, 211, 255, 0) 100%);
   }
@@ -89,7 +99,7 @@
 .hud {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: var(--z-hud);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -216,7 +226,7 @@
   left: 50%;
   bottom: 18px;
   transform: translateX(-50%);
-  z-index: 30;
+  z-index: var(--z-dock);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -230,30 +240,38 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 5px;
     min-width: 74px;
-    padding: 8px 14px;
+    padding: 8px 12px 6px;
     border: none;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-lg);
     background: transparent;
     color: var(--color-text-muted);
-    font-weight: 700;
-    font-size: 0.72rem;
+    font-weight: 800;
+    font-size: 0.74rem;
     cursor: pointer;
     transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease;
 
-    &:hover { transform: translateY(-2px); }
+    &:hover .dock__icon { transform: translateY(-3px) rotate(-4deg); }
 
+    &:active .dock__icon { transform: translateY(2px) scale(0.95); }
+
+    // The tab you are on: its sticker pops up bigger and the label lights up.
     &--active {
-      background: linear-gradient(160deg, #6fa8ff, var(--color-primary));
-      color: #fff;
-      box-shadow: 0 4px 0 var(--color-primary-dark), 0 6px 12px rgba(0, 0, 0, 0.18);
+      background: #eef4ff;
+      color: var(--color-primary-dark);
+
+      .dock__icon {
+        transform: translateY(-6px) scale(1.14);
+      }
     }
 
     &--logout:hover { color: var(--color-danger); }
   }
 
-  &__icon { font-size: 1.4rem; line-height: 1; }
+  &__icon {
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 }
 
 @media (max-width: $breakpoint-sm) {
@@ -263,6 +281,12 @@
     transform: none;
     justify-content: space-around;
     border-radius: var(--radius-lg);
+  }
+  // Five tabs share a phone's width evenly rather than overflowing it.
+  .dock__btn {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 2px 6px;
   }
   .hud__name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }

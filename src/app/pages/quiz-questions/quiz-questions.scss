@@ -16,6 +16,13 @@
   }
 }
 
+// Reminds the teacher the questions were written for them to check.
+.question-intro {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .question-list {
   display: flex;
   flex-direction: column;
@@ -35,6 +42,18 @@
 
   &__text {
     font-weight: 600;
+  }
+
+  // Marks a question the teacher corrected — a regenerate leaves it alone.
+  &__tag {
+    margin-left: var(--space-2);
+    padding: 0.1rem 0.5rem;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
   }
 
   &__actions {
@@ -104,21 +123,6 @@
     &:disabled {
       color: var(--color-text-soft);
       cursor: not-allowed;
-    }
-  }
-
-  &__add {
-    align-self: flex-start;
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0;
-
-    &:hover {
-      text-decoration: underline;
     }
   }
 }

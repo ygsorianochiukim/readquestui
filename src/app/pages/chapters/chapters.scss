@@ -113,7 +113,7 @@
   }
 }
 
-// Scan-the-printed-page control under the story textarea.
+// "Choose pages" control in the add-a-chapter upload form.
 .scan {
   display: flex;
   flex-wrap: wrap;
@@ -126,5 +126,32 @@
     min-width: 200px;
     font-size: var(--font-size-sm);
     color: var(--color-text-muted);
+  }
+}
+
+// Class completion under each chapter's story preview.
+.chapter-row__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  max-width: 22rem;
+}
+
+.chapter-row__progress-label {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+// Right-hand side of the header: the pages link and the add button together.
+.header-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+
+  .back-link {
+    margin-bottom: 0;
   }
 }

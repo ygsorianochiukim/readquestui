@@ -39,6 +39,7 @@ export class QuizQuestions implements OnInit {
   readonly questions = signal<QuizQuestion[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
+  readonly regenerating = signal(false);
   readonly isFormOpen = signal(false);
   readonly editingQuestionId = signal<number | null>(null);
   readonly errorMessage = signal<string | null>(null);
@@ -67,11 +68,32 @@ export class QuizQuestions implements OnInit {
     });
   }
 
-  openCreateForm(): void {
-    this.editingQuestionId.set(null);
-    this.questionForm = this.emptyForm();
+  /**
+   * Write the questions again from the chapter's text. Nothing is typed from
+   * scratch; questions the teacher corrected are kept by the API.
+   */
+  regenerate(): void {
+    if (this.questions().some((question) => question.is_generated)
+      && !confirm('Write a fresh set of questions? The generated ones will be replaced; ones you edited are kept.')) {
+      return;
+    }
+
+    this.regenerating.set(true);
     this.errorMessage.set(null);
-    this.isFormOpen.set(true);
+
+    this.quizQuestionService.regenerate(this.chapterId).subscribe({
+      next: (response) => {
+        this.questions.set(response.data);
+        this.regenerating.set(false);
+        if (response.data.length === 0) {
+          this.errorMessage.set('Could not write questions from this chapter\'s text. It may be too short.');
+        }
+      },
+      error: (response: HttpErrorResponse) => {
+        this.regenerating.set(false);
+        this.errorMessage.set(this.readError(response));
+      },
+    });
   }
 
   openEditForm(question: QuizQuestion): void {
@@ -98,10 +120,6 @@ export class QuizQuestions implements OnInit {
     }
   }
 
-  addChoice(): void {
-    this.questionForm.choices.push('');
-  }
-
   removeChoice(index: number): void {
     if (this.questionForm.choices.length <= 2) {
       return;
@@ -125,6 +143,12 @@ export class QuizQuestions implements OnInit {
       return;
     }
 
+    // Only corrections to an existing (generated) question are saved here.
+    const questionId = this.editingQuestionId();
+    if (!questionId) {
+      return;
+    }
+
     this.saving.set(true);
     const payload: QuizQuestionPayload = {
       question_text: this.questionForm.question_text,
@@ -132,12 +156,7 @@ export class QuizQuestions implements OnInit {
       correct_answer: this.questionForm.correct_answer,
     };
 
-    const questionId = this.editingQuestionId();
-    const request = questionId
-      ? this.quizQuestionService.update(questionId, payload)
-      : this.quizQuestionService.create(this.chapterId, payload);
-
-    request.subscribe({
+    this.quizQuestionService.update(questionId, payload).subscribe({
       next: () => {
         this.saving.set(false);
         this.isFormOpen.set(false);

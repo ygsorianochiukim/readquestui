@@ -15,10 +15,14 @@ export class NarrationService {
     });
   }
 
-  /** Fetch a scanned page's narration audio (MP3) as a Blob for playback. */
-  getPageNarration(pageId: number): Observable<Blob> {
+  /**
+   * Fetch a page's narration audio (MP3) as a Blob for playback. With a
+   * paragraph, only that paragraph — one page of the student's flip book.
+   */
+  getPageNarration(pageId: number, paragraph?: number): Observable<Blob> {
     return this.http.get(`${this.base}/pages/${pageId}/narration`, {
       responseType: 'blob',
+      params: paragraph == null ? {} : { paragraph },
     });
   }
 }

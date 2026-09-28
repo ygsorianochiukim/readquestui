@@ -1,36 +1,33 @@
-import { Component, ElementRef, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AudioService } from '../../services/audio/audio';
 import { ProgressService } from '../../services/progress/progress';
 import { BookProgress, ChapterNode } from '../../models';
-import { EmptyState, Spinner, Icon } from '../../shared/components';
+import {
+  EmptyState,
+  Icon,
+  LevelMap,
+  LevelStop,
+  LevelStopLook,
+  ProgressBar,
+  Spinner,
+} from '../../shared/components';
 
-type LevelState = 'locked' | 'current' | 'available' | 'completed';
-
-interface LevelNode {
-  chapter: ChapterNode;
-  index: number;
-  level: number;
-  xPercent: number;
-  yPx: number;
-  state: LevelState;
-}
-
-const AMPLITUDE = 22;
-const STEP = 180;
-const TOP_PAD = 80;
-const BOTTOM_PAD = 130;
-
+/**
+ * Inside one book: its chapters as a winding level map, chapter 1 at the
+ * bottom — the same map the kingdom zooms into.
+ */
 @Component({
   selector: 'app-student-book',
-  imports: [EmptyState, Spinner, Icon],
+  imports: [EmptyState, Icon, LevelMap, ProgressBar, Spinner],
   templateUrl: './student-book.html',
   styleUrl: './student-book.scss',
 })
 export class StudentBook implements OnInit {
   private progressService = inject(ProgressService);
+  private audio = inject(AudioService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private host = inject(ElementRef<HTMLElement>);
 
   readonly bookId = Number(this.route.snapshot.paramMap.get('bookId'));
   readonly book = signal<BookProgress | null>(null);
@@ -38,80 +35,61 @@ export class StudentBook implements OnInit {
 
   readonly chapters = computed<ChapterNode[]>(() => this.book()?.chapters ?? []);
 
-  readonly levels = computed<LevelNode[]>(() => {
-    const chapters = this.chapters();
-    const count = chapters.length;
-    const currentId = chapters.find(
-      (chapter) => !chapter.is_locked && chapter.progress?.status !== 'completed',
-    )?.id;
+  /** The chapter the child is up to — the one the header points at. */
+  readonly currentChapter = computed(
+    () =>
+      this.chapters().find(
+        (chapter) => !chapter.is_locked && chapter.progress?.status !== 'completed',
+      ) ?? null,
+  );
 
-    return chapters.map((chapter, index) => ({
-      chapter,
-      index,
-      level: chapter.chapter_number,
-      xPercent: 50 + AMPLITUDE * Math.sin(index * 0.9 + 0.5),
-      yPx: TOP_PAD + (count - 1 - index) * STEP,
-      state: this.stateFor(chapter, chapter.id === currentId),
-    }));
+  readonly completedCount = computed(
+    () => this.chapters().filter((chapter) => chapter.progress?.status === 'completed').length,
+  );
+
+  readonly percent = computed(() => {
+    const total = this.chapters().length;
+
+    return total === 0 ? 0 : Math.round((this.completedCount() / total) * 100);
   });
 
-  readonly worldHeight = computed(() => {
-    const count = this.chapters().length;
-    if (count === 0) {
-      return 0;
-    }
-    return TOP_PAD + (count - 1) * STEP + BOTTOM_PAD;
+  /** The chapters as stops on the book's level map, chapter 1 at the bottom. */
+  readonly stops = computed<LevelStop[]>(() => {
+    const currentId = this.currentChapter()?.id;
+
+    return this.chapters().map((chapter) => {
+      const look = this.stateFor(chapter, chapter.id === currentId);
+      return {
+        id: chapter.id,
+        number: chapter.chapter_number,
+        title: chapter.title,
+        look,
+        meta:
+          chapter.has_quiz && look !== 'locked'
+            ? 'Has a quiz'
+            : look === 'current'
+              ? 'Up next'
+              : undefined,
+        label: `Chapter ${chapter.chapter_number}: ${chapter.title}`,
+      };
+    });
   });
 
-  readonly viewBox = computed(() => `0 0 100 ${this.worldHeight()}`);
-
-  readonly trailPath = computed(() => {
-    const points = this.levels();
-    if (points.length === 0) {
-      return '';
-    }
-    if (points.length === 1) {
-      return `M ${points[0].xPercent} ${points[0].yPx}`;
-    }
-
-    let d = `M ${points[0].xPercent} ${points[0].yPx}`;
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      d += ` Q ${prev.xPercent} ${prev.yPx} ${(prev.xPercent + curr.xPercent) / 2} ${(prev.yPx + curr.yPx) / 2}`;
-    }
-    const last = points[points.length - 1];
-    d += ` L ${last.xPercent} ${last.yPx}`;
-    return d;
-  });
+  readonly isFinished = computed(
+    () => this.chapters().length > 0 && this.completedCount() === this.chapters().length,
+  );
 
   ngOnInit(): void {
     this.progressService.book(this.bookId).subscribe({
       next: (response) => {
         this.book.set(response.data);
         this.loading.set(false);
-        this.scrollToCurrent();
       },
       error: () => this.loading.set(false),
     });
   }
 
-  /** Open the map at the player's current chapter (near the bottom). */
-  private scrollToCurrent(): void {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    requestAnimationFrame(() => {
-      const current = this.host.nativeElement.querySelector('.spot--current');
-      if (current) {
-        current.scrollIntoView({ block: 'center', behavior: 'auto' });
-      } else {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' });
-      }
-    });
-  }
-
-  private stateFor(chapter: ChapterNode, isCurrent: boolean): LevelState {
+  private stateFor(chapter: ChapterNode, isCurrent: boolean): LevelStopLook {
     if (chapter.progress?.status === 'completed') {
       return 'completed';
     }
@@ -121,10 +99,13 @@ export class StudentBook implements OnInit {
     return isCurrent ? 'current' : 'available';
   }
 
-  open(chapter: ChapterNode): void {
-    if (chapter.is_locked) {
+  open(chapterId: number): void {
+    const chapter = this.chapters().find((c) => c.id === chapterId);
+    if (!chapter || chapter.is_locked) {
       return;
     }
+
+    this.audio.play('tap', 0.4);
     this.router.navigate(['/student/books', this.bookId, 'chapters', chapter.id]);
   }
 

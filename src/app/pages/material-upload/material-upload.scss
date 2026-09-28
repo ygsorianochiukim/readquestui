@@ -1,0 +1,371 @@
+@use 'abstracts' as *;
+
+// ---- Drop zone -------------------------------------------------------
+
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-5);
+  margin-bottom: var(--space-5);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &--over {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+
+  &__icon {
+    color: var(--color-primary);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 800;
+  }
+
+  &__note {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  // A styled label wrapping a hidden input — the file picker's own button
+  // cannot be themed.
+  &__button {
+    margin-top: var(--space-3);
+
+    input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 0.6rem 1.2rem;
+      border-radius: var(--radius-full);
+      background: var(--color-primary);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    input:focus-visible + span {
+      outline: 3px solid var(--color-primary-dark);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// ---- Uploads list ----------------------------------------------------
+
+.uploads {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--font-size-lg);
+  }
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+  }
+
+  &__name {
+    display: flex;
+    flex-direction: column;
+    font-weight: 700;
+    min-width: 0;
+
+    small {
+      font-weight: 500;
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+    }
+  }
+
+  &__progress {
+    flex: 1;
+    min-width: 8rem;
+  }
+
+  &__error {
+    flex: 1;
+    min-width: 10rem;
+    font-size: var(--font-size-sm);
+    color: var(--color-danger);
+  }
+}
+
+// ---- Preview panel ---------------------------------------------------
+
+.preview {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(17, 22, 40, 0.4);
+  }
+
+  &__panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: min(52rem, 100%);
+    height: 100%;
+    overflow-y: auto;
+    padding: var(--space-5);
+    background: var(--color-surface);
+    box-shadow: -18px 0 46px rgba(17, 22, 40, 0.2);
+  }
+
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: var(--font-size-lg);
+  }
+
+  &__status {
+    margin: var(--space-1) 0 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__close {
+    border: 0;
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: var(--space-2);
+  }
+
+  &__working {
+    display: grid;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  &__note {
+    margin: 0 0 var(--space-3);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--space-4);
+    margin: var(--space-4) 0;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  &__label {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-text-muted);
+  }
+
+  &__input {
+    @include form-control;
+  }
+
+  &__check {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+  }
+
+  // Picture book or chapter reader: two stacked radio cards.
+  &__choice {
+    display: grid;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    border: none;
+  }
+
+  &__section {
+    margin-top: var(--space-5);
+  }
+
+  &__section-title {
+    margin: 0 0 var(--space-2);
+    // An <h3> used as a small caps label, so it takes the body face: the
+    // display face has a single weight and smears when faux-bolded.
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+    // Kept in reach however long the page list is.
+    position: sticky;
+    bottom: 0;
+    background: var(--color-surface);
+  }
+}
+
+// ---- Chapters --------------------------------------------------------
+
+.chapters {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  &__number {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-weight: 800;
+  }
+
+  &__pages {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  &__remove {
+    border: 0;
+    background: none;
+    color: var(--color-danger);
+    cursor: pointer;
+    padding: var(--space-2);
+  }
+}
+
+// ---- Pages -----------------------------------------------------------
+
+.pages {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  // Page picture beside the words we read off it, so a teacher can check one
+  // against the other without scrolling between them.
+  &__row {
+    display: grid;
+    grid-template-columns: 10rem 1fr;
+    gap: var(--space-4);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+
+    @media (max-width: $breakpoint-sm) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__image {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    background: #fff;
+
+    &--none {
+      display: grid;
+      place-items: center;
+      color: var(--color-text-soft);
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  &__text-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  &__number {
+    font-size: var(--font-size-sm);
+    font-weight: 800;
+    color: var(--color-text-muted);
+  }
+
+  &__area {
+    resize: vertical;
+    font-size: var(--font-size-sm);
+    line-height: 1.7;
+  }
+
+  // Read again / Replace photo — how a bad read is fixed without typing.
+  &__rescan {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+}

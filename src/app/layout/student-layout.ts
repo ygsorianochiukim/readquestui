@@ -1,25 +1,35 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { Icon } from '../shared/components';
+import { Icon, IconName, RewardToast, StickerIcon } from '../shared/components';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { StudentAuthService } from '../services/student-auth/student-auth';
 import { RewardService } from '../services/reward/reward';
+import { AudioService } from '../services/audio/audio';
 
 interface GameNavItem {
   label: string;
   path: string;
-  icon: string;
+  /** Typed, so a nav item can never name an icon that does not exist. */
+  icon: IconName;
 }
 
 @Component({
   selector: 'app-student-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, RewardToast, StickerIcon],
   templateUrl: './student-layout.html',
   styleUrl: './student-layout.scss',
 })
 export class StudentLayout implements OnInit {
   private studentAuth = inject(StudentAuthService);
   private rewardService = inject(RewardService);
+  private audio = inject(AudioService);
   private router = inject(Router);
+
+  /**
+   * The sound switch lives here as well as on the reading screen, because a
+   * teacher who needs a room quiet needs to reach it from wherever the child
+   * happens to be.
+   */
+  readonly muted = this.audio.muted;
 
   readonly student = this.studentAuth.student;
   readonly points = signal(0);
@@ -63,6 +73,10 @@ export class StudentLayout implements OnInit {
       },
       error: () => {},
     });
+  }
+
+  toggleMute(): void {
+    this.audio.toggleMute();
   }
 
   logout(): void {

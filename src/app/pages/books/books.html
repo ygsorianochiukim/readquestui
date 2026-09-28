@@ -1,5 +1,9 @@
 <div class="page-actions">
-  <app-button (clicked)="openCreateForm()">+ Add Book</app-button>
+  <!-- A book is only ever made by uploading it: the pages are read for you and
+       the book, its chapters and their content are built from them. -->
+  <app-button (clicked)="goToUpload()">
+    <app-icon name="upload" size="sm" /> Upload reading material
+  </app-button>
 </div>
 
 <app-alert [message]="errorMessage()" variant="error" />
@@ -10,8 +14,10 @@
   <app-empty-state
     icon="books"
     title="No books yet"
-    message="Add the DepEd Leveled Reader Books so pupils have something to read.">
-    <app-button (clicked)="openCreateForm()">+ Add Book</app-button>
+    message="Upload a PDF or photos of a book's pages and we will read the words off them and build the book for you.">
+    <app-button (clicked)="goToUpload()">
+      <app-icon name="upload" size="sm" /> Upload reading material
+    </app-button>
   </app-empty-state>
 } @else {
   <div class="book-grid">
@@ -27,27 +33,41 @@
           </div>
           <div class="entity-card__heading">
             <h3 class="entity-card__title">{{ book.title }}</h3>
-            @if (book.type === 'scanned') {
-              <p class="entity-card__subheader">
-                Scanned book · {{ book.pages_count ?? 0 }} pages
-              </p>
-            } @else {
-              <p class="entity-card__subheader">
-                {{ book.reading_level || 'Book ' + book.sequence }} · {{ book.chapters_count ?? 0 }} chapters
-              </p>
-            }
+            <!-- Every book is Book → Chapters → Content; a picture book's
+                 content is its pages. -->
+            <p class="entity-card__subheader">
+              {{ book.reading_level || 'Book ' + book.sequence }} ·
+              {{ book.chapters_count ?? 0 }} {{ book.chapters_count === 1 ? 'chapter' : 'chapters' }}
+              @if (book.type === 'scanned') {
+                · {{ book.pages_count ?? 0 }} pages
+              }
+            </p>
           </div>
         </div>
 
-        @if (book.type === 'scanned') {
-          <a class="entity-card__bar" [routerLink]="['/dashboard/books', book.id, 'pages']">
-            Manage Pages
-          </a>
+        <!-- How far this teacher's own class has got through it. A book on the
+             shelf that nobody is finishing is the thing worth noticing here. -->
+        @if (progressFor(book); as progress) {
+          <div class="book-progress">
+            @if (progress.assigned === 0) {
+              <p class="book-progress__none">Not assigned to anyone yet</p>
+            } @else {
+              <p class="book-progress__label">
+                {{ progress.completed }} of {{ progress.assigned }}
+                {{ progress.assigned === 1 ? 'pupil has' : 'pupils have' }} finished it
+              </p>
+              <app-progress-bar [percent]="progress.percent" />
+            }
+          </div>
         } @else {
-          <a class="entity-card__bar" [routerLink]="['/dashboard/books', book.id, 'chapters']">
-            Manage Chapters
-          </a>
+          <div class="book-progress">
+            <p class="book-progress__none">Not assigned to anyone yet</p>
+          </div>
         }
+
+        <a class="entity-card__bar" [routerLink]="['/dashboard/books', book.id, 'chapters']">
+          Manage Chapters
+        </a>
 
         <div class="entity-card__footer">
           <button type="button" class="entity-card__action" (click)="openEditForm(book)">Update</button>
@@ -64,20 +84,14 @@
   </div>
 }
 
+<!-- Editing a book's details only. Books themselves come from uploads. -->
 <app-modal
   [open]="isFormOpen()"
-  [title]="editingBookId() ? 'Edit Book' : 'New Book'"
+  title="Edit Book"
   (closed)="closeForm()">
   <form class="form-grid" (ngSubmit)="saveBook()">
     <app-form-field class="form-grid__full" label="Title">
       <input name="title" [(ngModel)]="bookForm.title" required />
-    </app-form-field>
-
-    <app-form-field class="form-grid__full" label="Book type" hint="Scanned books let you upload page images and auto-extract the text.">
-      <select name="type" [(ngModel)]="bookForm.type">
-        <option value="standard">Standard (chapters)</option>
-        <option value="scanned">Scanned (uploaded pages)</option>
-      </select>
     </app-form-field>
 
     <app-form-field class="form-grid__full" label="Description">

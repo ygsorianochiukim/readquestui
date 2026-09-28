@@ -65,6 +65,77 @@
     font-style: italic;
   }
 
+  // The sentence the word came from — context, not decoration.
+  &__clue {
+    width: 100%;
+    max-width: 520px;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--color-primary-soft);
+  }
+
+  &__clue-label {
+    margin: 0 0 var(--space-1);
+    font-size: var(--font-size-sm);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-primary-dark);
+  }
+
+  &__clue-text {
+    margin: 0 0 var(--space-2);
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--color-text);
+  }
+
+  &__helpers {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-4);
+  }
+
+  &__link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    // A tap target a child can actually hit.
+    min-height: 44px;
+    padding: 0 var(--space-2);
+    border: 0;
+    background: none;
+    color: var(--color-primary-dark);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:focus-visible {
+      outline: 3px solid var(--color-primary);
+      outline-offset: 2px;
+      border-radius: var(--radius-sm);
+    }
+  }
+
+  &__reveal {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--color-primary-dark);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
   &__input {
     @include form-control;
     max-width: 260px;

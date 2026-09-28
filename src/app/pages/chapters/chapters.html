@@ -1,9 +1,18 @@
 <div class="page-actions page-actions--split">
   <a class="back-link" routerLink="/dashboard/books"><app-icon name="back" size="sm" /> Back to books</a>
-  <app-button (clicked)="openCreateForm()">+ Add Chapter</app-button>
+  <div class="header-group">
+    <!-- Every book is Book → Chapters → Pages, a reader as much as a picture book. -->
+    <a class="back-link" [routerLink]="['/dashboard/books', bookId, 'pages']">
+      <app-icon name="story" size="sm" /> All pages
+    </a>
+    <app-button (clicked)="openUploadForm()">
+      <app-icon name="upload" size="sm" /> Add Chapter
+    </app-button>
+  </div>
 </div>
 
 <app-alert [message]="errorMessage()" variant="error" />
+<app-alert [message]="noticeMessage()" variant="success" />
 
 @if (loading()) {
   <app-spinner label="Loading chapters…" />
@@ -11,8 +20,10 @@
   <app-empty-state
     icon="book"
     title="No chapters yet"
-    message="Add the first chapter with its story and quiz.">
-    <app-button (clicked)="openCreateForm()">+ Add Chapter</app-button>
+    message="Upload photos or a PDF of a chapter's printed pages. We read the words off them and write its quiz for you.">
+    <app-button (clicked)="openUploadForm()">
+      <app-icon name="upload" size="sm" /> Add Chapter
+    </app-button>
   </app-empty-state>
 } @else {
   <div class="chapter-list">
@@ -23,22 +34,48 @@
             <span class="chapter-row__number">Chapter {{ chapter.chapter_number }}</span>
             <span class="chapter-row__title">{{ chapter.title }}</span>
           </div>
-          <p class="chapter-row__story">{{ chapter.story_text || 'No story text yet.' }}</p>
+          @if (isPictureBook()) {
+            <!-- A picture book's chapter is its pages. -->
+            <p class="chapter-row__story">
+              {{ chapter.pages_count ?? 0 }} {{ chapter.pages_count === 1 ? 'page' : 'pages' }}
+            </p>
+          } @else {
+            <p class="chapter-row__story">{{ chapter.story_text || 'No words were read off this chapter yet.' }}</p>
+          }
+
+          <!-- The chapter a whole class stalls on is the one worth rewriting,
+               and it is invisible without this. -->
+          @if (progressFor(chapter); as progress) {
+            <div class="chapter-row__progress">
+              <span class="chapter-row__progress-label">
+                {{ progress.completed }} of {{ progress.assigned }} finished
+              </span>
+              <app-progress-bar [percent]="progress.percent" [showLabel]="false" />
+            </div>
+          }
         </div>
 
         <div class="chapter-row__actions">
-          <app-button variant="secondary" (clicked)="playNarration(chapter)">
-            @if (activeNarrationId() === chapter.id && narrationLoading()) {
-              Loading…
-            } @else if (activeNarrationId() === chapter.id) {
-              <app-icon name="pause" size="sm" /> Stop
-            } @else {
-              <app-icon name="listen" size="sm" /> Listen
-            }
-          </app-button>
-          <a class="chapter-row__quiz" [routerLink]="['/dashboard/chapters', chapter.id, 'quiz']">
-            Quiz ({{ chapter.quiz_questions_count ?? 0 }})
+          <a
+            class="chapter-row__quiz"
+            [routerLink]="['/dashboard/books', bookId, 'pages']"
+            [fragment]="'chapter-' + chapter.id">
+            Pages ({{ chapter.pages_count ?? 0 }})
           </a>
+          @if (!isPictureBook()) {
+            <app-button variant="secondary" (clicked)="playNarration(chapter)">
+              @if (activeNarrationId() === chapter.id && narrationLoading()) {
+                Loading…
+              } @else if (activeNarrationId() === chapter.id) {
+                <app-icon name="pause" size="sm" /> Stop
+              } @else {
+                <app-icon name="listen" size="sm" /> Listen
+              }
+            </app-button>
+            <a class="chapter-row__quiz" [routerLink]="['/dashboard/chapters', chapter.id, 'quiz']">
+              Quiz ({{ chapter.quiz_questions_count ?? 0 }})
+            </a>
+          }
           <app-button variant="ghost" (clicked)="openEditForm(chapter)">Edit</app-button>
           <app-button variant="ghost" (clicked)="deleteChapter(chapter)">Delete</app-button>
         </div>
@@ -47,10 +84,55 @@
   </div>
 }
 
-<app-modal
-  [open]="isFormOpen()"
-  [title]="editingChapterId() ? 'Edit Chapter' : 'New Chapter'"
-  (closed)="closeForm()">
+<!-- ---- Add a chapter: upload its pages, never type it ---------------- -->
+
+<app-modal [open]="isUploadOpen()" title="Add a Chapter" (closed)="closeUploadForm()">
+  <form class="chapter-form" (ngSubmit)="uploadChapter()">
+    <app-form-field
+      label="The chapter's pages"
+      hint="Photos of each printed page in order, or one PDF. We read the words off them — nothing to type.">
+      <div class="scan">
+        <input
+          #pagesInput
+          type="file"
+          multiple
+          accept="application/pdf,image/*"
+          hidden
+          (change)="onPagesSelected($event)" />
+        <app-button variant="secondary" [disabled]="uploading()" (clicked)="pagesInput.click()">
+          <app-icon name="scan" size="sm" />
+          {{ uploadFiles().length ? 'Choose different pages' : 'Choose pages' }}
+        </app-button>
+        @if (uploadFiles().length) {
+          <span class="scan__note">
+            {{ uploadFiles().length }} {{ uploadFiles().length === 1 ? 'file' : 'files' }} chosen
+          </span>
+        }
+      </div>
+    </app-form-field>
+
+    <app-form-field
+      label="Title (optional)"
+      hint="Left blank, the chapter heading on the first page is used.">
+      <input name="upload_title" [(ngModel)]="uploadTitle" />
+    </app-form-field>
+
+    @if (uploading()) {
+      <app-alert variant="info" message="Reading the pages… this takes a few seconds a page." />
+    }
+  </form>
+
+  <div footer>
+    <app-button variant="secondary" (clicked)="closeUploadForm()">Cancel</app-button>
+    <app-button [disabled]="uploading() || uploadFiles().length === 0" (clicked)="uploadChapter()">
+      {{ uploading() ? 'Reading…' : 'Upload & read' }}
+    </app-button>
+  </div>
+</app-modal>
+
+<!-- ---- Edit: title, order, picture, and fixing scanning mistakes ------- -->
+
+<app-modal [open]="isFormOpen()" title="Edit Chapter" (closed)="closeForm()">
   <form class="chapter-form" (ngSubmit)="saveChapter()">
     <div class="chapter-form__row">
       <app-form-field label="Chapter #">
@@ -61,31 +143,13 @@
       </app-form-field>
     </div>
 
-    <app-form-field
-      label="Story text"
-      hint="Type the DepEd story, or scan the printed page and edit what it reads.">
-      <textarea name="story_text" [(ngModel)]="chapterForm.story_text" rows="5"></textarea>
-
-      <div class="scan">
-        <input
-          #scanInput
-          type="file"
-          accept="image/*"
-          hidden
-          (change)="onScanSelected($event)" />
-        <app-button variant="secondary" [disabled]="scanning()" (clicked)="scanInput.click()">
-          <app-icon name="scan" size="sm" />
-          {{
-            scanning()
-              ? 'Reading the page…'
-              : (chapterForm.story_text ? 'Scan another page' : 'Scan printed page')
-          }}
-        </app-button>
-        @if (scanMessage()) {
-          <span class="scan__note">{{ scanMessage() }}</span>
-        }
-      </div>
-    </app-form-field>
+    @if (!isPictureBook()) {
+      <app-form-field
+        label="Fix scanning mistakes"
+        hint="This is the text we read off the pages. Correct anything the scanner got wrong — the generated quiz is rewritten to match.">
+        <textarea name="story_text" [(ngModel)]="chapterForm.story_text" rows="6"></textarea>
+      </app-form-field>
+    }
 
     <app-form-field label="Illustration (optional)">
       <div class="image-upload">
@@ -109,10 +173,6 @@
           {{ imageUploading() ? 'Uploading…' : (chapterForm.image_url ? 'Change image' : 'Upload image') }}
         </app-button>
       </div>
-    </app-form-field>
-
-    <app-form-field label="Narration audio URL (optional)">
-      <input name="audio_url" [(ngModel)]="chapterForm.audio_url" />
     </app-form-field>
   </form>
 

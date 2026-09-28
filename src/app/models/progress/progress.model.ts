@@ -26,10 +26,25 @@ export interface BookOverview {
   type: 'standard' | 'scanned';
   total_chapters: number;
   completed_chapters: number;
+  /** Page books are measured in pages; chapter books report zero here. */
+  total_pages: number;
+  completed_pages: number;
   percent: number;
   is_locked: boolean;
   is_completed: boolean;
   current_chapter_id: number | null;
+  /** Page books only: the chapters their pages are grouped into, if any. */
+  page_chapters?: PageChapter[];
+}
+
+/** A group of pages inside a page (scanned) book, with the student's progress. */
+export interface PageChapter {
+  id: number;
+  title: string;
+  sequence: number;
+  page_count: number;
+  pages_completed: number;
+  first_page_id: number | null;
 }
 
 /** A chapter row within a book, annotated with the student's progress + lock. */
@@ -63,6 +78,36 @@ export interface QuizReviewItem {
   correct_answer: string;
   given_answer: string | null;
   is_correct: boolean;
+  /** Same as given_answer / is_correct, under the names the summary reads. */
+  selected: string | null;
+  correct: boolean;
+}
+
+/** The instant verdict on one quiz answer, revealed only after a guess. */
+export interface QuizAnswerCheck {
+  correct: boolean;
+  correct_answer: string;
+}
+
+/** The three mini-games every chapter offers. */
+export type GameType = 'scramble' | 'missing-word' | 'sentence-builder';
+
+/** A mini-game already won on a chapter, and what its first win paid. */
+export interface GameWinRecord {
+  game_type: GameType;
+  points_awarded: number;
+  perfect: boolean;
+  completed_at: string | null;
+}
+
+/** What winning a mini-game earned. Points are paid on the first win only. */
+export interface GameWin {
+  game_type: GameType;
+  points_earned: number;
+  first_completion: boolean;
+  perfect: boolean;
+  games: GameWinRecord[];
+  total_points: number;
 }
 
 export interface QuizResult {

@@ -2,58 +2,36 @@
   <app-spinner label="Opening your book…" />
 } @else if (!book()) {
   <app-empty-state icon="book" title="Book not found" message="This book isn't available right now." />
-} @else {
-  <!-- Minimal floating back button (no heavy header) -->
-  <button type="button" class="mapback" (click)="back()" aria-label="Back to library"><app-icon name="back" size="lg" /></button>
+} @else if (book(); as data) {
+  <button type="button" class="mapback" (click)="back()" aria-label="Back to the kingdom">
+    <app-icon name="back" size="lg" />
+  </button>
+
+  <header class="tower-head">
+    <h1 class="tower-head__title">{{ data.title }}</h1>
+
+    <p class="tower-head__meta">
+      {{ completedCount() }} of {{ chapters().length }} chapters finished
+      @if (currentChapter(); as chapter) {
+        · up next: <strong>{{ chapter.title }}</strong>
+      }
+    </p>
+
+    <app-progress-bar [percent]="percent()" />
+
+    @if (isFinished()) {
+      <p class="tower-head__done">
+        <app-icon name="celebrate" size="md" /> You finished this whole book!
+      </p>
+    }
+  </header>
 
   @if (chapters().length === 0) {
     <app-empty-state
-      icon="map"
-      title="No levels yet"
+      icon="book"
+      title="Nothing inside yet"
       message="Your teacher hasn't added chapters to this adventure." />
   } @else {
-    <div class="worldmap" [style.height.px]="worldHeight()">
-      <app-icon class="worldmap__flag" name="flag-finish" size="xl" />
-
-      <svg class="worldmap__trail" [attr.viewBox]="viewBox()" preserveAspectRatio="none" aria-hidden="true">
-        <path class="worldmap__edge" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
-        <path class="worldmap__road" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
-        <path class="worldmap__stripes" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
-      </svg>
-
-      @for (node of levels(); track node.chapter.id) {
-        <div class="spot spot--{{ node.state }}" [style.left.%]="node.xPercent" [style.top.px]="node.yPx">
-          @if (node.state === 'current') {
-            <app-icon class="spot__buddy" name="buddy" size="lg" />
-          }
-
-          <button
-            type="button"
-            class="spot__node"
-            [disabled]="node.state === 'locked'"
-            [attr.aria-label]="'Level ' + node.level + ': ' + node.chapter.title"
-            (click)="open(node.chapter)">
-            @if (node.state === 'locked') {
-              <app-icon class="spot__icon" name="locked" size="xl" />
-            } @else if (node.state === 'completed') {
-              <app-icon class="spot__icon" name="star" size="xl" />
-            } @else {
-              <span class="spot__num">{{ node.level }}</span>
-            }
-          </button>
-
-          <div class="spot__card">
-            <p class="spot__name">{{ node.chapter.title }}</p>
-            @if (node.state === 'locked') {
-              <p class="spot__hint"><app-icon name="locked" size="sm" /> Locked</p>
-            } @else if (node.state === 'completed') {
-              <p class="spot__hint spot__hint--done">Completed!</p>
-            } @else {
-              <p class="spot__hint">Tap to play</p>
-            }
-          </div>
-        </div>
-      }
-    </div>
+    <app-level-map [stops]="stops()" finishIcon="flag-finish" (pick)="open($event.stop.id)" />
   }
 }

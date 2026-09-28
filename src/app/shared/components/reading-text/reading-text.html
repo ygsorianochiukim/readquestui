@@ -1,0 +1,26 @@
+<p class="reading reading--{{ size() }}" role="group" aria-label="Reading passage">
+  @for (word of words(); track word.index) {
+    @if (canRetry(word)) {
+      <button
+        type="button"
+        class="reading__word reading__word--{{ word.state }} reading__word--tappable"
+        [attr.aria-label]="label(word) + '. Tap to try again.'"
+        (click)="retryWord.emit(word)">
+        {{ word.text }}<app-icon class="reading__retry" name="retry" size="sm" />
+      </button>
+    } @else {
+      <span
+        class="reading__word reading__word--{{ word.state }}"
+        [attr.aria-label]="label(word)">
+        {{ word.text }}
+      </span>
+    }
+  }
+</p>
+
+@if (interactive() && hasResults()) {
+  <p class="reading__hint">
+    <app-icon name="wave" size="sm" />
+    Tap a red word to hear it and try again.
+  </p>
+}

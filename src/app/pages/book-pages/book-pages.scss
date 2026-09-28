@@ -69,7 +69,9 @@
 
   &__save {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
+    gap: var(--space-2);
   }
 
   @media (max-width: $breakpoint-sm) {
@@ -79,5 +81,43 @@
       width: 100%;
       max-width: 220px;
     }
+  }
+}
+
+// One chapter of a picture book and the pages in it.
+.chapter-group {
+  margin-bottom: var(--space-6);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    font-size: var(--font-size-lg);
+  }
+
+  &__number {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--color-primary-dark);
+    background: var(--color-primary-soft);
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+  }
+
+  &__empty {
+    margin: 0 0 var(--space-3);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-soft);
+    font-style: italic;
   }
 }

@@ -1,16 +1,14 @@
 @use 'abstracts' as *;
 
 // Small floating back button (no heavy header).
+// Positioning now belongs to .reader__chrome, which lays this out alongside
+// the sound switches.
 .mapback {
-  position: sticky;
-  top: 8px;
-  z-index: 10;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
-  margin-bottom: -44px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
   color: var(--color-primary-dark);
@@ -48,11 +46,12 @@
     gap: var(--space-2);
   }
 
-  &__recording {
-    color: var(--color-danger);
-    font-weight: 600;
+  // Shown when the browser cannot stream to Azure and we are only recording.
+  &__fallback {
+    margin: 0;
+    color: var(--color-text-muted);
     font-size: var(--font-size-sm);
-    animation: pulse 1.2s ease-in-out infinite;
+    font-weight: 600;
   }
 
   &__result {
@@ -62,21 +61,6 @@
     padding: var(--space-5);
     text-align: center;
     box-shadow: var(--shadow-sm);
-  }
-
-  &__result-title {
-    font-size: var(--font-size-lg);
-    margin-bottom: var(--space-4);
-  }
-
-  &__scores {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-3);
-
-    @media (max-width: $breakpoint-sm) {
-      grid-template-columns: repeat(2, 1fr);
-    }
   }
 
   &__heard {
@@ -94,21 +78,6 @@
     font-weight: 700;
   }
 
-  // Where to go once a score is showing.
-  &__after {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-3);
-    margin-top: var(--space-5);
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--color-border);
-  }
-
-  &__after-text {
-    font-weight: 700;
-    color: var(--color-text);
-  }
 }
 
 // =============================================================
@@ -174,15 +143,16 @@
     text-align: center;
   }
 
-  &__text {
-    font-size: 1.5rem;
-    line-height: 2.1;
-    letter-spacing: 0.01em;
-    color: #362b1f;
-    white-space: pre-line;
-    // Clean, rounded, easy for young readers.
-    font-family: var(--font-family);
-    font-weight: 500;
+  // A scanned page keeps its picture: a child reads the page in front of them,
+  // and stripping the illustration out of a picture book leaves them nothing.
+  &__image {
+    display: block;
+    width: 100%;
+    max-height: 46vh;
+    margin: 0 auto var(--space-4);
+    border-radius: var(--radius-md);
+    // Contain, never cover — a cropped page can hide the words.
+    object-fit: contain;
   }
 
   &__empty {
@@ -218,46 +188,51 @@
     min-height: 360px;
     padding: var(--space-6) var(--space-5);
   }
-  .book__text {
-    font-size: 1.3rem;
-    line-height: 2;
+
+  .book__image {
+    max-height: 38vh;
   }
 }
 
 // =============================================================
-//  Score cards (read-aloud results)
+//  Reading chrome — back button and the sound switches
 // =============================================================
-.score {
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
+.reader__chrome {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: -44px;
+}
 
-  &__value {
-    font-size: 1.6rem;
-    font-weight: 700;
-  }
+.reader__sound {
+  display: flex;
+  gap: var(--space-2);
+}
 
-  &__label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
+.reader__sound-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
 
-  &--great {
-    background: var(--color-success-soft);
-    color: var(--color-success);
-  }
-
-  &--good {
-    background: var(--color-primary-soft);
+  &--on {
     color: var(--color-primary-dark);
+    background: var(--color-primary-soft);
   }
 
-  &--try {
-    background: var(--color-warning-soft);
-    color: var(--color-warning);
+  &:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
   }
 }
 
@@ -377,16 +352,6 @@
     display: flex;
     justify-content: center;
     margin-top: var(--space-4);
-  }
-
-  &__done {
-    font-weight: 700;
-    color: var(--color-success);
-  }
-
-  &__todo {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
   }
 
   &__finished {

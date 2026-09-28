@@ -1,13 +1,13 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { AchievementService } from '../../services/achievement/achievement';
 import { Achievement, AchievementSummary } from '../../models';
-import { Spinner, Icon } from '../../shared/components';
+import { Spinner, Icon, StickerIcon } from '../../shared/components';
 
 type Filter = 'all' | 'unlocked' | 'locked';
 
 @Component({
   selector: 'app-student-achievements',
-  imports: [Spinner, Icon],
+  imports: [Spinner, Icon, StickerIcon],
   templateUrl: './student-achievements.html',
   styleUrl: './student-achievements.scss',
 })

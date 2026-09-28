@@ -27,7 +27,9 @@ export class Layout implements OnInit {
   readonly navItems: ShellNavItem[] = [
     { label: 'Dashboard', path: '/dashboard/home', icon: 'dashboard' },
     { label: 'Students', path: '/dashboard/students', icon: 'students' },
+    { label: 'Read-aloud Review', path: '/dashboard/read-aloud', icon: 'mic' },
     { label: 'Books & Content', path: '/dashboard/books', icon: 'books' },
+    { label: 'Upload Material', path: '/dashboard/upload', icon: 'upload' },
     { label: 'Badges & Rewards', path: '/dashboard/badges', icon: 'badges' },
     { label: 'Activity Log', path: '/dashboard/activity-log', icon: 'log' },
     { label: 'My Profile', path: '/dashboard/profile', icon: 'profile' },

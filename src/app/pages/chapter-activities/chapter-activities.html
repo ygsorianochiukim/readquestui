@@ -25,7 +25,7 @@
           [class.track__stage--active]="activeStep() === step.key"
           [class.track__stage--done]="step.done"
           (click)="go(step.key)">
-          <span class="track__bubble"><app-icon [name]="step.done ? 'check' : step.icon" size="lg" /></span>
+          <app-sticker-icon class="track__bubble" [name]="step.done ? 'check' : step.icon" size="lg" />
           <span class="track__label">{{ step.label }}</span>
         </button>
       }
@@ -36,22 +36,32 @@
       @if (activeStep() === 'story') {
         <div class="act">
           <div class="act__bar">
-            <h2 class="act__title"><app-icon name="book" size="sm" /> Read the story</h2>
+            <h2 class="act__title"><app-sticker-icon name="book" size="sm" /> Read the story</h2>
             <app-button variant="secondary" (clicked)="toggleNarration()">
               <app-icon [name]="narrating() ? 'stop' : 'listen'" size="sm" />
               {{ narrating() ? 'Stop' : (narrationLoading() ? 'Loading…' : 'Listen') }}
             </app-button>
           </div>
-          @if (imageUrl()) {
-            <img class="act__image" [src]="imageUrl()" [alt]="title()" />
-          }
-          @if (storyText()) {
-            <p class="act__story">{{ storyText() }}</p>
+          @if (pages().length) {
+            <!-- The chapter as a real book: one page at a time, turned by hand. -->
+            <app-flip-book
+              [pages]="pages()"
+              [alt]="title()"
+              (pageChange)="onFlipPage($event)" />
           } @else {
-            <p class="act__muted">This chapter has no story text yet.</p>
+            @if (imageUrl()) {
+              <img class="act__image" [src]="imageUrl()" [alt]="title()" />
+            }
+            @if (storyText()) {
+              <p class="act__story">{{ storyText() }}</p>
+            } @else {
+              <p class="act__muted">This chapter has no story text yet.</p>
+            }
           }
           <div class="act__actions">
-            <app-button (clicked)="markStoryRead()">
+            <app-button
+              [variant]="pages().length && !onLastPage() && !storyRead() ? 'secondary' : 'primary'"
+              (clicked)="markStoryRead()">
               {{ storyRead() ? 'Read again — continue' : "I've read it" }}
               <app-icon name="forward" size="sm" />
             </app-button>
@@ -62,52 +72,173 @@
       <!-- READ ALOUD -->
       @if (activeStep() === 'readaloud') {
         <div class="act">
-          <h2 class="act__title"><app-icon name="mic" size="sm" /> Read it aloud</h2>
-          <p class="act__muted">
-            Press record, read the story out loud, then stop to get your score.
-            Score {{ passMark }} or higher to unlock the next step.
-          </p>
-          @if (storyText()) {
-            <p class="act__story act__story--compact">{{ storyText() }}</p>
+          <h2 class="act__title"><app-sticker-icon name="mic" size="sm" /> Read it aloud</h2>
+          @if (readByPage()) {
+            <p class="act__muted">
+              Read one page at a time. Press record and read the page out loud — each word
+              turns green as you get it right. Read every page, and score {{ passMark }} on
+              average, to unlock the next step.
+            </p>
+
+            <!-- Where you are in the chapter: one dot per page, coloured by its best score. -->
+            <nav class="readpages" aria-label="Pages to read aloud">
+              <button
+                type="button"
+                class="readpages__turn"
+                [disabled]="readIndex() === 0 || isBusy() || recordingState() === 'recording'"
+                aria-label="Previous page"
+                (click)="goToReadPage(readIndex() - 1)">
+                <app-icon name="back" size="md" />
+              </button>
+
+              <div class="readpages__middle">
+                <span class="readpages__count">Page {{ readIndex() + 1 }} of {{ readingPages().length }}</span>
+                <ol class="readpages__dots">
+                  @for (page of readingPages(); track page.key; let i = $index) {
+                    <li>
+                      <button
+                        type="button"
+                        class="readpages__dot readpages__dot--{{ scoreOf(page) === null ? 'unread' : meterTone(scoreOf(page)!) }}"
+                        [class.readpages__dot--current]="i === readIndex()"
+                        [disabled]="isBusy() || recordingState() === 'recording'"
+                        [attr.aria-label]="
+                          'Page ' + (i + 1) + (scoreOf(page) === null ? ', not read yet' : ', best score ' + scoreOf(page))
+                        "
+                        (click)="goToReadPage(i)"></button>
+                    </li>
+                  }
+                </ol>
+                @if (readAloudSummary(); as summary) {
+                  <span class="readpages__summary">
+                    {{ summary.pages_read }} of {{ summary.pages_total }} read
+                    @if (summary.average !== null) {
+                      · average {{ summary.average }}
+                    }
+                  </span>
+                }
+              </div>
+
+              <button
+                type="button"
+                class="readpages__turn"
+                [disabled]="isLastReadPage() || isBusy() || recordingState() === 'recording'"
+                aria-label="Next page"
+                (click)="goToReadPage(readIndex() + 1)">
+                <app-icon name="forward" size="md" />
+              </button>
+            </nav>
+          } @else {
+            <p class="act__muted">
+              Press record and read the story out loud. Each word turns green as you
+              get it right. Score {{ passMark }} or higher to unlock the next step.
+            </p>
+          }
+
+          @if (readText()) {
+            <app-reading-text
+              class="act__reading"
+              [class.act__reading--page]="readByPage()"
+              [words]="words()"
+              [size]="readByPage() ? 'large' : 'normal'"
+              [interactive]="recordingState() === 'idle' && !!result()"
+              (retryWord)="retryWord($event)" />
+          }
+
+          <!-- Live feedback while the child is still reading. -->
+          @if (recordingState() === 'recording' && !retryTarget()) {
+            <div class="live" role="status">
+              <div class="live__head">
+                <span class="live__dot" aria-hidden="true"></span>
+                <span class="live__title">Listening…</span>
+              </div>
+
+              <div class="live__meters">
+                <span class="live__meter">
+                  <app-icon name="check-circle" size="sm" /> {{ liveProgress() }}% read
+                </span>
+
+                @if (liveWpm(); as wpm) {
+                  <span class="live__meter live__meter--{{ livePace() }}">
+                    <app-icon name="gauge" size="sm" /> {{ wpm }} words a minute
+                    @if (livePace() === 'too_slow') {
+                      · a little faster
+                    } @else if (livePace() === 'too_fast') {
+                      · slow down a little
+                    }
+                  </span>
+                }
+              </div>
+
+              @if (liveMeters().length) {
+                <ul class="live-scores" aria-label="How your reading is going">
+                  @for (meter of liveMeters(); track meter.key) {
+                    <li class="live-scores__item">
+                      <span class="live-scores__label">{{ meter.label }}</span>
+                      <span class="live-scores__track" aria-hidden="true">
+                        <span
+                          class="live-scores__fill live-scores__fill--{{ meterTone(meter.value) }}"
+                          [style.width.%]="meter.value"></span>
+                      </span>
+                      <span class="live-scores__value">{{ meter.value }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+
+              <app-live-transcript [transcript]="liveTranscript()" [partial]="partialTranscript()" />
+
+            </div>
+          }
+
+          <!-- One word, tried again. -->
+          @if (retryTarget(); as target) {
+            <div class="retry" role="group" aria-label="Try this word again">
+              <p class="retry__label">Try this word</p>
+              <p class="retry__word">{{ target.text }}</p>
+              <div class="retry__actions">
+                <app-button variant="ghost" (clicked)="speakWord(target.text)">
+                  <app-icon name="listen" size="sm" /> Hear it
+                </app-button>
+
+                @if (liveAvailable()) {
+                  @if (recordingState() === 'recording') {
+                    <app-button (clicked)="finishWordRetry()">
+                      <app-icon name="stop" size="sm" /> I said it
+                    </app-button>
+                  } @else {
+                    <app-status-indicator status="loading" label="Getting ready…" />
+                  }
+                }
+
+                <app-button variant="secondary" (clicked)="cancelWordRetry()">Done</app-button>
+              </div>
+            </div>
           }
 
           <div class="act__actions">
             <app-button
               [variant]="recordingState() === 'recording' ? 'danger' : 'primary'"
-              [disabled]="recordingState() === 'assessing'"
+              [disabled]="isBusy() || !!retryTarget()"
               (clicked)="toggleRecording()">
-              @if (recordingState() === 'recording') {
-                <app-icon name="stop" size="sm" /> Stop & score
+              @if (recordingState() === 'connecting') {
+                <app-icon name="gauge" size="sm" /> Getting ready…
+              } @else if (recordingState() === 'recording') {
+                <app-icon name="stop" size="sm" /> Stop &amp; score
               } @else if (recordingState() === 'assessing') {
-                Scoring…
+                <app-icon name="gauge" size="sm" /> Scoring…
               } @else if (result()) {
                 <app-icon name="mic" size="sm" /> Try again
               } @else {
                 <app-icon name="mic" size="sm" /> Start recording
               }
             </app-button>
+
+            @if (recordingState() === 'assessing') {
+              <app-status-indicator status="loading" label="Working out your score…" />
+            }
           </div>
 
           @if (result(); as attempt) {
-            <div class="scores">
-              <div class="score score--{{ scoreTone(attempt.pron_score) }}">
-                <span class="score__value">{{ attempt.pron_score ?? 0 }}</span>
-                <span class="score__label">Overall</span>
-              </div>
-              <div class="score">
-                <span class="score__value">{{ attempt.accuracy_score ?? 0 }}</span>
-                <span class="score__label">Accuracy</span>
-              </div>
-              <div class="score">
-                <span class="score__value">{{ attempt.fluency_score ?? 0 }}</span>
-                <span class="score__label">Fluency</span>
-              </div>
-              <div class="score">
-                <span class="score__value">{{ attempt.completeness_score ?? 0 }}</span>
-                <span class="score__label">Complete</span>
-              </div>
-            </div>
-            <!-- What we actually heard, so the score makes sense to the pupil. -->
             <p class="act__muted">
               @if (attempt.recognized_text) {
                 We heard: “{{ attempt.recognized_text }}”
@@ -116,16 +247,25 @@
               }
             </p>
             <p class="act__match">
-              That matched {{ (attempt.text_match_score ?? 0).toFixed(0) }}% of the words in this story.
+              That matched {{ (attempt.text_match_score ?? 0).toFixed(0) }}% of the words on this {{ readNoun() }}.
             </p>
+          }
+
+          <!-- Page by page, a read page always leads on to the next one. -->
+          @if (readByPage() && result() && !isLastReadPage() && recordingState() === 'idle') {
+            <div class="act__actions">
+              <app-button (clicked)="goToReadPage(readIndex() + 1)">
+                Next page <app-icon name="forward" size="sm" />
+              </app-button>
+            </div>
           }
 
           @if (pronunciationPassed()) {
             <div class="act__actions">
-              <app-alert variant="success" message="Great reading!" />
+              <app-status-indicator status="passed" label="Great reading!" />
               <app-button (clicked)="go('game')">Continue <app-icon name="forward" size="sm" /></app-button>
             </div>
-          } @else if (result()) {
+          } @else if (result() && !result()?.passed) {
             <!-- Below the pass mark: say why, and never leave them stuck. -->
             <div class="act__actions">
               <app-alert variant="info" [message]="readAloudFeedback()" />
@@ -140,26 +280,70 @@
       <!-- GAME -->
       @if (activeStep() === 'game') {
         <div class="act">
-          <h2 class="act__title">{{ gameTitle() }}</h2>
+          <div class="act__bar">
+            <h2 class="act__title"><app-sticker-icon name="game" size="sm" /> Pick a game</h2>
+            @if (gamePointsTotal()) {
+              <span class="games__total"><app-icon name="star" size="sm" /> {{ gamePointsTotal() }} points from games</span>
+            }
+          </div>
+          <p class="act__muted">
+            Win any one game to finish this step. Every game you win pays points the first time —
+            and a win with no mistakes earns a bonus star!
+          </p>
+
+          <!-- Game picker: every game is playable; the stars show what each has earned. -->
+          <div class="games" role="tablist" aria-label="Choose a game">
+            @for (option of gameOptions(); track option.kind) {
+              <button
+                type="button"
+                role="tab"
+                class="games__tile"
+                [class.games__tile--active]="gameKind() === option.kind"
+                [class.games__tile--won]="!!option.win"
+                [attr.aria-selected]="gameKind() === option.kind"
+                (click)="pickGame(option.kind)">
+                <app-sticker-icon [name]="option.icon" size="lg" />
+                <span class="games__name">{{ option.title }}</span>
+                <span class="games__stars" [attr.aria-label]="starsFor(option) + ' of 2 stars'">
+                  @for (slot of [1, 2]; track slot) {
+                    <span class="games__star" [class.games__star--on]="starsFor(option) >= slot">★</span>
+                  }
+                </span>
+                <span class="games__points">
+                  @if (option.win) {
+                    +{{ option.win.points_awarded }} pts
+                  } @else {
+                    Not played yet
+                  }
+                </span>
+              </button>
+            }
+          </div>
+
+          <h3 class="games__title">{{ gameTitle() }}</h3>
           @switch (gameKind()) {
             @case ('missing-word') {
               <app-missing-word
                 [sentences]="gameSentences()"
-                [alreadyDone]="gameCompleted()"
-                (completed)="onGameCompleted()" />
+                [alreadyDone]="currentGameWon()"
+                (completed)="onGameCompleted('missing-word', $event)" />
             }
             @case ('sentence-builder') {
               <app-sentence-builder
                 [sentences]="gameSentences()"
-                [alreadyDone]="gameCompleted()"
-                (completed)="onGameCompleted()" />
+                [alreadyDone]="currentGameWon()"
+                (completed)="onGameCompleted('sentence-builder', $event)" />
             }
             @default {
               <app-word-scramble
-                [words]="gameWords()"
-                [alreadyDone]="gameCompleted()"
-                (completed)="onGameCompleted()" />
+                [challenges]="wordChallenges()"
+                [alreadyDone]="currentGameWon()"
+                (completed)="onGameCompleted('scramble', $event)" />
             }
+          }
+
+          @if (gameMessage(); as message) {
+            <p class="games__message" role="status"><app-icon name="sparkles" size="sm" /> {{ message }}</p>
           }
           @if (gameCompleted()) {
             <div class="act__actions">
@@ -172,7 +356,7 @@
       <!-- QUIZ -->
       @if (activeStep() === 'quiz') {
         <div class="act">
-          <h2 class="act__title"><app-icon name="quiz" size="sm" /> Chapter quiz</h2>
+          <h2 class="act__title"><app-sticker-icon name="quiz" size="sm" /> Chapter quiz</h2>
 
           @if (quizQuestions().length === 0) {
             <p class="act__muted">This chapter has no quiz. You can finish it now!</p>
@@ -185,6 +369,27 @@
                 {{ res.score }}%
               </span>
               <p>You got {{ res.correct }} of {{ res.total }} correct.</p>
+
+              <!-- Every question, right or wrong, with the right answer beside a miss. -->
+              @if (res.review.length) {
+                <ul class="quiz-review">
+                  @for (item of res.review; track item.question_id; let ri = $index) {
+                    <li class="quiz-review__item" [class.quiz-review__item--right]="item.correct">
+                      <app-icon [name]="item.correct ? 'check-circle' : 'close'" size="sm" />
+                      <div class="quiz-review__body">
+                        <p class="quiz-review__q">{{ ri + 1 }}. {{ questionText(item.question_id) }}</p>
+                        <p class="quiz-review__a">
+                          You said: {{ item.selected ?? '—' }}
+                          @if (!item.correct) {
+                            · Right answer: <strong>{{ item.correct_answer }}</strong>
+                          }
+                        </p>
+                      </div>
+                    </li>
+                  }
+                </ul>
+              }
+
               @if (res.passed) {
                 <app-alert variant="success" message="You passed the quiz!" />
                 <app-button (clicked)="finish()">Finish chapter <app-icon name="forward" size="sm" /></app-button>
@@ -194,30 +399,78 @@
               }
             </div>
           } @else {
-            <div class="quiz">
-              @for (question of quizQuestions(); track question.id; let qi = $index) {
+            <!-- One question at a time: each answer is marked the moment it is picked. -->
+            @if (currentQuestion(); as question) {
+              <div class="quiz">
+                <p class="quiz__progress">Question {{ quizIndex() + 1 }} of {{ quizQuestions().length }}</p>
                 <div class="quiz__q">
-                  <p class="quiz__prompt">{{ qi + 1 }}. {{ question.question_text }}</p>
+                  <p class="quiz__prompt">{{ question.question_text }}</p>
                   <div class="quiz__choices">
                     @for (choice of question.choices; track choice) {
                       <button
                         type="button"
                         class="quiz__choice"
                         [class.quiz__choice--picked]="isChosen(question.id, choice)"
+                        [class.quiz__choice--right]="choiceState(choice) === 'right'"
+                        [class.quiz__choice--wrong]="choiceState(choice) === 'wrong'"
+                        [disabled]="!!quizFeedback() || quizChecking()"
                         (click)="choose(question.id, choice)">
+                        @if (choiceState(choice) === 'right') {
+                          <app-icon name="check-circle" size="sm" />
+                        } @else if (choiceState(choice) === 'wrong') {
+                          <app-icon name="close" size="sm" />
+                        }
                         {{ choice }}
                       </button>
                     }
                   </div>
                 </div>
-              }
-              <div class="act__actions">
-                <app-button (clicked)="submitQuiz()">Submit answers</app-button>
+
+                @if (quizChecking()) {
+                  <app-status-indicator status="loading" label="Checking…" />
+                }
+
+                @if (quizFeedback(); as feedback) {
+                  <div
+                    class="quiz__feedback"
+                    role="status"
+                    [class.quiz__feedback--right]="feedback.correct === true"
+                    [class.quiz__feedback--wrong]="feedback.correct === false">
+                    <app-icon
+                      [name]="feedback.correct === false ? 'close' : 'check-circle'"
+                      size="md" />
+                    <span>
+                      {{ feedback.message }}
+                      @if (feedback.correct === false && feedback.correctAnswer) {
+                        The answer is <strong>{{ feedback.correctAnswer }}</strong>.
+                      }
+                    </span>
+                  </div>
+                  <div class="act__actions">
+                    <app-button [disabled]="quizSubmitting()" (clicked)="nextQuestion()">
+                      {{ isLastQuestion() ? 'See my score' : 'Next' }}
+                      <app-icon name="forward" size="sm" />
+                    </app-button>
+                  </div>
+                }
               </div>
-            </div>
+            }
           }
         </div>
       }
     </div>
   </div>
 }
+
+<app-score-modal
+  [open]="showScore()"
+  [attempt]="result()"
+  [celebrations]="celebrations()"
+  [passMark]="passMark"
+  [paceHint]="paceHint()"
+  [nextLabel]="scoreNextLabel()"
+  [alwaysNext]="readByPage() && !isLastReadPage()"
+  [words]="words()"
+  (retry)="readAgain()"
+  (next)="continueAfterScore()"
+  (closed)="dismissScore()" />

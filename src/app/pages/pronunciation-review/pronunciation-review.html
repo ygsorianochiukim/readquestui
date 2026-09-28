@@ -1,0 +1,270 @@
+<app-page-header
+  title="Read-aloud review"
+  subtitle="Listen to what your pupils recorded, see the words they struggled with, and correct any score the system got wrong." />
+
+<app-alert [message]="errorMessage()" variant="error" />
+
+<app-card>
+  <div class="filters">
+    <label class="filters__field">
+      <span class="filters__label">Pupil</span>
+      <select class="filters__control" [ngModel]="studentFilter()" (ngModelChange)="studentFilter.set($event ? +$event : null); applyFilters()">
+        <option [ngValue]="null">All pupils</option>
+        @for (student of roster(); track student.id) {
+          <option [ngValue]="student.id">{{ student.first_name }} {{ student.last_name }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="filters__field">
+      <span class="filters__label">Status</span>
+      <select class="filters__control" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); applyFilters()">
+        <option value="pending">Waiting for review</option>
+        <option value="reviewed">Already reviewed</option>
+        <option value="">All readings</option>
+      </select>
+    </label>
+
+    <label class="filters__check">
+      <input
+        type="checkbox"
+        [ngModel]="onlyFailed()"
+        (ngModelChange)="onlyFailed.set($event); applyFilters()" />
+      <span>Only readings that did not pass</span>
+    </label>
+
+    <p class="filters__count">
+      <app-status-indicator status="pending" [label]="pendingCount() + ' waiting'" />
+    </p>
+  </div>
+</app-card>
+
+@if (loading()) {
+  <app-spinner label="Loading readings…" />
+} @else if (attempts().length === 0) {
+  <app-empty-state
+    icon="mic"
+    title="Nothing to review"
+    message="When your pupils record themselves reading, their readings will appear here." />
+} @else {
+  <div class="queue">
+    @for (attempt of attempts(); track attempt.id) {
+      <button
+        type="button"
+        class="queue__row"
+        [class.queue__row--open]="selected()?.id === attempt.id"
+        (click)="open(attempt)">
+        <span class="queue__who">
+          <span class="queue__name">{{ studentName(attempt) }}</span>
+          <span class="queue__source">{{ source(attempt) }}</span>
+        </span>
+
+        <span class="queue__score queue__score--{{ reviewState(attempt) }}">
+          {{ attempt.effective_score === null ? '—' : (attempt.effective_score | number: '1.0-0') }}%
+          @if (attempt.teacher_score !== null) {
+            <app-icon name="verified" size="sm" label="Score set by you" />
+          }
+        </span>
+
+        <app-status-indicator [status]="reviewState(attempt)" size="sm" />
+
+        @if (attempt.is_off_script) {
+          <span class="queue__flag"><app-icon name="alert" size="sm" /> Read something else</span>
+        }
+
+        <span class="queue__when">{{ attempt.created_at }}</span>
+      </button>
+    }
+  </div>
+
+  @if (hasMore()) {
+    <div class="queue__more">
+      <app-button variant="secondary" (clicked)="nextPage()">Load more</app-button>
+    </div>
+  }
+}
+
+<!-- ---- Detail ------------------------------------------------------ -->
+
+@if (selected(); as attempt) {
+  <div class="detail">
+    <div class="detail__overlay" (click)="close()"></div>
+
+    <aside class="detail__panel" role="dialog" aria-modal="true" aria-label="Reading detail">
+      <header class="detail__head">
+        <div>
+          <h2 class="detail__title">{{ studentName(attempt) }}</h2>
+          <p class="detail__subtitle">{{ source(attempt) }} · {{ attempt.created_at }}</p>
+        </div>
+        <button type="button" class="detail__close" (click)="close()" aria-label="Close">
+          <app-icon name="close" size="lg" />
+        </button>
+      </header>
+
+      @if (detailLoading()) {
+        <app-spinner label="Loading the reading…" />
+      } @else {
+        <section class="detail__scores">
+          <div class="detail__score">
+            <span class="detail__score-value">
+              {{ attempt.effective_score === null ? '—' : (attempt.effective_score | number: '1.0-0') }}
+            </span>
+            <span class="detail__score-label">Score that counts</span>
+          </div>
+          <div class="detail__score">
+            <span class="detail__score-value">
+              {{ attempt.pron_score === null ? '—' : (attempt.pron_score | number: '1.0-0') }}
+            </span>
+            <span class="detail__score-label">System score</span>
+          </div>
+          <div class="detail__score">
+            <span class="detail__score-value">
+              {{ attempt.accuracy_score === null ? '—' : (attempt.accuracy_score | number: '1.0-0') }}
+            </span>
+            <span class="detail__score-label">Accuracy</span>
+          </div>
+          <div class="detail__score">
+            <span class="detail__score-value">
+              {{ attempt.fluency_score === null ? '—' : (attempt.fluency_score | number: '1.0-0') }}
+            </span>
+            <span class="detail__score-label">Fluency</span>
+          </div>
+          <div class="detail__score">
+            <span class="detail__score-value">
+              {{ attempt.prosody_score === null ? '—' : (attempt.prosody_score | number: '1.0-0') }}
+            </span>
+            <span class="detail__score-label">Intonation</span>
+          </div>
+          <div class="detail__score" title="How clearly each sound was said — the average of Azure's per-sound scores">
+            <span class="detail__score-value">
+              {{ attempt.diction_score === null ? '—' : (attempt.diction_score | number: '1.0-0') }}
+            </span>
+            <span class="detail__score-label">Diction</span>
+          </div>
+          <div class="detail__score">
+            <span class="detail__score-value">{{ attempt.words_per_minute ?? '—' }}</span>
+            <span class="detail__score-label">Words a minute</span>
+          </div>
+        </section>
+
+        @if (attempt.is_off_script) {
+          <app-alert
+            variant="error"
+            message="This reading did not match the text on the page — the pupil may have read something else, or the recording may have picked up the wrong voice." />
+        }
+
+        @if (attempt.audio_url) {
+          <section class="detail__section">
+            <h3 class="detail__section-title">The recording</h3>
+            <audio class="detail__audio" controls [src]="attempt.audio_url"></audio>
+          </section>
+        }
+
+        <section class="detail__section">
+          <h3 class="detail__section-title">Word by word</h3>
+          <p class="detail__section-note">
+            Green was read correctly, red was mispronounced, grey was skipped.
+            A tick marks a word the pupil got right when they tried it again afterwards.
+          </p>
+          @if (attempt.words?.length) {
+            <p class="detail__passage">
+              @for (word of attempt.words; track word.word_index) {
+                <span
+                  class="detail__word detail__word--{{ wordClass(word) }}"
+                  [class.detail__word--corrected]="word.is_corrected"
+                  [title]="wordTitle(word)">
+                  {{ word.word }}
+                  @if (word.is_corrected) {
+                    <app-icon name="check" size="sm" />
+                  }
+                </span>
+              }
+            </p>
+          } @else {
+            <p class="detail__section-note">
+              No per-word results were stored for this reading.
+            </p>
+          }
+        </section>
+
+        @if (missedWords().length) {
+          <section class="detail__section">
+            <h3 class="detail__section-title">Words to work on</h3>
+            <ul class="detail__missed">
+              @for (word of missedWords(); track word.word_index) {
+                <li class="detail__missed-word" [class.detail__missed-word--corrected]="word.is_corrected">
+                  {{ word.word }}
+                  <small>{{ word.error_type === 'Omission' ? 'skipped' : 'mispronounced' }}</small>
+                  @if (word.is_corrected) {
+                    <small class="detail__corrected">
+                      <app-icon name="check" size="sm" /> corrected on retry
+                    </small>
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        <section class="detail__section">
+          <h3 class="detail__section-title">What we heard</h3>
+          <p class="detail__heard">{{ attempt.recognized_text || 'Nothing could be made out.' }}</p>
+        </section>
+
+        <!-- The point of the whole screen: a teacher's judgement beats the
+             machine's, and has to actually change the pupil's progress. -->
+        <section class="detail__section detail__section--override">
+          <h3 class="detail__section-title">Your verdict</h3>
+          <p class="detail__section-note">
+            Set a score here to replace the system's. It counts towards whether
+            this pupil passed, not just what the report says.
+          </p>
+
+          <div class="detail__override">
+            <label class="detail__field">
+              <span class="detail__field-label">Score out of 100</span>
+              <input
+                class="detail__input"
+                type="number"
+                min="0"
+                max="100"
+                [ngModel]="overrideScore()"
+                (ngModelChange)="overrideScore.set($event === null || $event === '' ? null : +$event)"
+                placeholder="Leave empty to keep the system score" />
+            </label>
+
+            <label class="detail__field">
+              <span class="detail__field-label">Note (optional)</span>
+              <textarea
+                class="detail__input"
+                rows="2"
+                [ngModel]="overrideNote()"
+                (ngModelChange)="overrideNote.set($event)"
+                placeholder="e.g. Noisy classroom — read it correctly to me."></textarea>
+            </label>
+          </div>
+
+          <div class="detail__actions">
+            <app-button [disabled]="saving()" (clicked)="saveOverride()">
+              <app-icon name="check" size="sm" /> Save my score
+            </app-button>
+
+            @if (attempt.teacher_score !== null) {
+              <app-button variant="ghost" [disabled]="saving()" (clicked)="clearOverride()">
+                Use the system score again
+              </app-button>
+            } @else if (!attempt.is_validated) {
+              <app-button variant="secondary" [disabled]="saving()" (clicked)="confirm(attempt)">
+                <app-icon name="verified" size="sm" /> The system got it right
+              </app-button>
+            }
+          </div>
+        </section>
+
+        <a class="detail__link" [routerLink]="['/dashboard/students', attempt.student_id, 'reading-report']">
+          <app-icon name="scroll" size="sm" /> See this pupil's full reading report
+        </a>
+      }
+    </aside>
+  </div>
+}

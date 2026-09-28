@@ -4,6 +4,9 @@
     <p class="mw__done-text">Missing word game complete!</p>
     @if (total() > 0) {
       <p class="mw__score">You got {{ correctCount() }} of {{ total() }} right.</p>
+      <app-button variant="secondary" (clicked)="restart()">
+        <app-icon name="retry" size="sm" /> Play again
+      </app-button>
     }
   </div>
 } @else if (total() === 0) {
@@ -15,6 +18,12 @@
 
     <p class="mw__sentence">{{ round.masked }}</p>
 
+    @if (speechAvailable) {
+      <button type="button" class="mw__link" (click)="hearSentence()">
+        <app-icon name="listen" size="sm" /> Read it to me
+      </button>
+    }
+
     <div class="mw__choices">
       @for (choice of round.choices; track choice) {
         <button
@@ -25,6 +34,18 @@
           [class.mw__choice--wrong]="picked() === choice && !isCorrect()"
           (click)="pick(choice)">
           {{ choice }}
+
+          @if (speechAvailable) {
+            <span
+              class="mw__hear"
+              role="button"
+              tabindex="0"
+              [attr.aria-label]="'Hear the word ' + choice"
+              (click)="hearChoice(choice, $event)"
+              (keydown.enter)="hearChoice(choice, $event)">
+              <app-icon name="listen" size="sm" />
+            </span>
+          }
         </button>
       }
     </div>

@@ -1,12 +1,25 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { afterNextRender, Component, computed, inject, Injector, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { BookPageService } from '../../services/book-page/book-page';
 import { NarrationService } from '../../services/narration/narration';
 import { BookPage } from '../../models';
+import { BookPageChapter } from '../../models/book-page/book-page.model';
 import { Alert, Button, EmptyState, Spinner, Icon } from '../../shared/components';
 
+/** One chapter and the pages in it, as shown on the page list. */
+interface PageGroup {
+  key: string;
+  chapter: BookPageChapter | null;
+  pages: BookPage[];
+}
+
+/**
+ * A book's pages, grouped under the chapters they belong to
+ * (Book → Chapters → Pages). Pages are added by uploading them into a
+ * chapter; a page that read badly is scanned again rather than retyped.
+ */
 @Component({
   selector: 'app-book-pages',
   imports: [FormsModule, RouterLink, Alert, Button, EmptyState, Spinner, Icon],
@@ -17,14 +30,41 @@ export class BookPages implements OnInit {
   private pageService = inject(BookPageService);
   private narrationService = inject(NarrationService);
   private route = inject(ActivatedRoute);
+  private injector = inject(Injector);
+
+  /** Arriving from a chapter's "Pages" link, jump to that chapter once — not on every reload. */
+  private pendingFragment = this.route.snapshot.fragment;
 
   readonly bookId = Number(this.route.snapshot.paramMap.get('bookId'));
   readonly pages = signal<BookPage[]>([]);
+  readonly chapters = signal<BookPageChapter[]>([]);
   readonly loading = signal(true);
   readonly uploading = signal(false);
   readonly uploadProgress = signal('');
   readonly savingPageId = signal<number | null>(null);
+  readonly rescanningPageId = signal<number | null>(null);
   readonly errorMessage = signal<string | null>(null);
+
+  /** The chapter the next upload goes into (null: the book's last chapter). */
+  private uploadChapterId: number | null = null;
+
+  /** Every chapter with its pages, in order; stray pages (if any) last. */
+  readonly groups = computed<PageGroup[]>(() => {
+    const pages = this.pages();
+    const groups: PageGroup[] = this.chapters().map((chapter) => ({
+      key: `chapter-${chapter.id}`,
+      chapter,
+      pages: pages.filter((page) => page.chapter_id === chapter.id),
+    }));
+
+    const known = new Set(this.chapters().map((chapter) => chapter.id));
+    const stray = pages.filter((page) => page.chapter_id === null || !known.has(page.chapter_id));
+    if (stray.length) {
+      groups.push({ key: 'unsorted', chapter: null, pages: stray });
+    }
+
+    return groups;
+  });
 
   // Narration playback
   readonly activeNarrationId = signal<number | null>(null);
@@ -40,13 +80,36 @@ export class BookPages implements OnInit {
     this.pageService.listForBook(this.bookId).subscribe({
       next: (response) => {
         this.pages.set(response.data);
+        this.chapters.set(response.chapters ?? []);
         this.loading.set(false);
+        this.scrollToFragment();
       },
       error: (response) => {
         this.errorMessage.set(this.readError(response));
         this.loading.set(false);
       },
     });
+  }
+
+  /** The pages arrive after the router has already tried to scroll, so do it here. */
+  private scrollToFragment(): void {
+    const fragment = this.pendingFragment;
+    this.pendingFragment = null;
+
+    if (!fragment) {
+      return;
+    }
+
+    afterNextRender(
+      () => document.getElementById(fragment)?.scrollIntoView({ block: 'start', behavior: 'smooth' }),
+      { injector: this.injector },
+    );
+  }
+
+  /** Open the file picker for pages that go into the given chapter. */
+  chooseFiles(chapterId: number | null, input: HTMLInputElement): void {
+    this.uploadChapterId = chapterId;
+    input.click();
   }
 
   onFilesSelected(event: Event): void {
@@ -68,7 +131,7 @@ export class BookPages implements OnInit {
     }
     this.uploading.set(true);
     this.uploadProgress.set(`Uploading & reading page ${index + 1} of ${files.length}…`);
-    this.pageService.upload(this.bookId, files[index]).subscribe({
+    this.pageService.upload(this.bookId, files[index], this.uploadChapterId).subscribe({
       next: () => this.uploadNext(files, index + 1),
       error: (response) => {
         this.uploading.set(false);
@@ -88,6 +151,34 @@ export class BookPages implements OnInit {
         this.errorMessage.set(this.readError(response));
       },
     });
+  }
+
+  /** Read a page again: from a replacement photo if given, else its own. */
+  rescan(page: BookPage, image: File | null): void {
+    this.rescanningPageId.set(page.id);
+    this.errorMessage.set(null);
+    this.pageService.rescan(page.id, image).subscribe({
+      next: (response) => {
+        this.rescanningPageId.set(null);
+        this.pages.update((pages) => pages.map((item) => (item.id === page.id ? response.data : item)));
+        if (!response.data.text?.trim()) {
+          this.errorMessage.set(`No words were found on page ${page.page_number}. If it has words, try a clearer photo.`);
+        }
+      },
+      error: (response: HttpErrorResponse) => {
+        this.rescanningPageId.set(null);
+        this.errorMessage.set(this.readError(response));
+      },
+    });
+  }
+
+  onReplacePhoto(page: BookPage, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    if (file) {
+      this.rescan(page, file);
+    }
   }
 
   deletePage(page: BookPage): void {

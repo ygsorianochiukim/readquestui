@@ -1,55 +1,102 @@
 @if (loading()) {
-  <app-spinner label="Loading your adventure…" />
+  <app-spinner label="Loading your kingdom…" />
 } @else if (books().length === 0) {
   <app-empty-state
     icon="books"
     title="No books yet"
     message="Your teacher hasn't assigned any books to you yet. Check back soon!" />
 } @else {
-  <!-- The scrollable adventure world -->
-  <div class="worldmap" [style.height.px]="worldHeight()">
-    <!-- Checkered goal flag at the top of the path -->
-    <app-icon class="worldmap__flag" name="flag-finish" size="xl" />
+  <!-- ---- Who you are and where you are ---------------------------- -->
 
-    <!-- The candy road -->
-    <svg class="worldmap__trail" [attr.viewBox]="viewBox()" preserveAspectRatio="none" aria-hidden="true">
-      <path class="worldmap__edge" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
-      <path class="worldmap__road" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
-      <path class="worldmap__stripes" [attr.d]="trailPath()" vector-effect="non-scaling-stroke" />
-    </svg>
-
-    @for (node of levels(); track node.book.id) {
-      <div class="spot spot--{{ node.state }}" [style.left.%]="node.xPercent" [style.top.px]="node.yPx">
-        @if (node.state === 'current') {
-          <app-icon class="spot__buddy" name="buddy" size="lg" />
+  <header class="banner">
+    <div class="banner__who">
+      <app-icon class="banner__crown" name="crown" size="xl" />
+      <div>
+        <p class="banner__hello">{{ firstName() }}'s Reading Kingdom</p>
+        @if (currentBook(); as book) {
+          <p class="banner__now">Reading now: <strong>{{ book.title }}</strong></p>
+        } @else {
+          <p class="banner__now">Every book finished. You are the champion reader!</p>
         }
-
-        <button
-          type="button"
-          class="spot__node"
-          [disabled]="node.state === 'locked'"
-          [attr.aria-label]="'Level ' + node.level + ': ' + node.book.title"
-          (click)="open(node.book)">
-          @if (node.state === 'locked') {
-            <app-icon class="spot__icon" name="locked" size="xl" />
-          } @else if (node.state === 'completed') {
-            <app-icon class="spot__icon" name="star" size="xl" />
-          } @else {
-            <span class="spot__num">{{ node.level }}</span>
-          }
-        </button>
-
-        <div class="spot__card">
-          <p class="spot__name">{{ node.book.title }}</p>
-          @if (node.state === 'locked') {
-            <p class="spot__hint"><app-icon name="locked" size="sm" /> Locked</p>
-          } @else if (node.state === 'completed') {
-            <p class="spot__hint spot__hint--done">Completed!</p>
-          } @else {
-            <p class="spot__hint">{{ node.book.percent }}%</p>
-          }
-        </div>
       </div>
-    }
-  </div>
+    </div>
+
+    <dl class="banner__stats">
+      <div class="banner__stat">
+        <dt>Books finished</dt>
+        <dd>{{ booksCompleted() }}<span>/ {{ books().length }}</span></dd>
+      </div>
+      <div class="banner__stat">
+        <dt>Chapters finished</dt>
+        <dd>{{ chaptersCompleted() }}</dd>
+      </div>
+      <div class="banner__stat">
+        <dt>Pages finished</dt>
+        <dd>{{ pagesCompleted() }}</dd>
+      </div>
+      <div class="banner__stat">
+        <dt>Points</dt>
+        <dd>{{ points() }}</dd>
+      </div>
+    </dl>
+  </header>
+
+  <!-- ---- The kingdom --------------------------------------------- -->
+
+  @if (zoom() === 'kingdom') {
+    <div class="kingdom" [class.kingdom--zooming]="zoomPhase() !== 'idle'">
+      <!-- Everything that flies when zooming into (or back out of) a tower. -->
+      <div
+        #kingdom
+        class="kingdom__world"
+        [class.kingdom__world--in]="zoomPhase() === 'in'"
+        [class.kingdom__world--out]="zoomPhase() === 'out'"
+        [style.--zoom-transform]="zoomTarget()?.transform"
+        [style.--zoom-origin]="zoomTarget()?.origin">
+        <div class="kingdom__sky" aria-hidden="true">
+          <span class="kingdom__sun"></span>
+          <span class="kingdom__cloud kingdom__cloud--1"></span>
+          <span class="kingdom__cloud kingdom__cloud--2"></span>
+        </div>
+
+        <app-level-map
+          [stops]="bookStops()"
+          [autoScroll]="zoomPhase() !== 'out'"
+          (pick)="enter($event)" />
+      </div>
+    </div>
+
+    <p class="kingdom__hint" [class.kingdom__hint--hidden]="zoomPhase() !== 'idle'">
+      <app-icon name="wave" size="sm" />
+      Tap a level to go inside and read.
+    </p>
+  }
+
+  <!-- ---- Inside one book ------------------------------------------ -->
+
+  @if (zoom() === 'book' && openBook(); as book) {
+    <div class="inside" [class.inside--leaving]="zoomPhase() === 'leaving'">
+      <button type="button" class="inside__back" (click)="leave()">
+        <app-icon name="back" size="sm" /> Back to the kingdom
+      </button>
+
+      <header class="inside__head">
+        <h1 class="inside__title">{{ book.title }}</h1>
+        <p class="inside__meta">{{ progressLabel(book) }}</p>
+        <app-progress-bar [percent]="book.percent" />
+      </header>
+
+      @if (chaptersLoading()) {
+        <app-spinner label="Opening the doors…" />
+      } @else if (rooms().length === 0) {
+        <app-empty-state
+          icon="book"
+          title="Nothing inside yet"
+          message="This book has no chapters yet. Your teacher is still building it." />
+      } @else {
+        <!-- The book's own level map: chapter 1 at the bottom, the road climbing. -->
+        <app-level-map [stops]="roomStops()" finishIcon="flag-finish" (pick)="openRoom($event)" />
+      }
+    </div>
+  }
 }

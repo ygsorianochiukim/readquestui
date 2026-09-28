@@ -1,0 +1,71 @@
+@use 'abstracts' as *;
+
+.toast {
+  position: fixed;
+  // Above the bottom dock, not behind it.
+  bottom: 132px;
+  left: 50%;
+  z-index: var(--z-toast);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(26rem, calc(100vw - 2rem));
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #ffd75e, #ffb347);
+  color: #5a3d00;
+  box-shadow: 0 16px 40px rgba(90, 61, 0, 0.32);
+  cursor: pointer;
+  animation: toast-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+
+  &__icon {
+    color: #8a5a00;
+  }
+
+  &__body {
+    min-width: 0;
+  }
+
+  &__milestone {
+    margin: 0 0 2px;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    opacity: 0.85;
+  }
+
+  &__name {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: 800;
+  }
+
+  &__note {
+    margin: 2px 0 0;
+    font-size: var(--font-size-sm);
+    opacity: 0.85;
+  }
+
+  &__points {
+    margin-left: auto;
+    font-size: 1.3rem;
+    font-weight: 800;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 24px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

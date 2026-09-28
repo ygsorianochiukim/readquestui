@@ -1,4 +1,29 @@
-<a class="mapback" routerLink="/student/library" aria-label="Back to library"><app-icon name="back" size="lg" /></a>
+<div class="reader__chrome">
+  <a class="mapback" routerLink="/student/library" aria-label="Back to library">
+    <app-icon name="back" size="lg" />
+  </a>
+
+  <div class="reader__sound">
+    <button
+      type="button"
+      class="reader__sound-button"
+      [attr.aria-pressed]="!muted()"
+      [attr.aria-label]="muted() ? 'Turn sounds on' : 'Turn sounds off'"
+      (click)="toggleMute()">
+      <app-icon [name]="muted() ? 'stop' : 'listen'" size="md" />
+    </button>
+
+    <button
+      type="button"
+      class="reader__sound-button"
+      [class.reader__sound-button--on]="musicEnabled() && !muted()"
+      [attr.aria-pressed]="musicEnabled()"
+      [attr.aria-label]="musicEnabled() ? 'Turn music off' : 'Turn music on'"
+      (click)="toggleMusic()">
+      <app-icon name="music" size="md" />
+    </button>
+  </div>
+</div>
 
 <app-alert [message]="errorMessage()" variant="error" />
 
@@ -12,17 +37,31 @@
 } @else {
   <div class="reader">
     <!-- The open book. Re-keyed on the page index so the flip plays each turn. -->
-    <div class="book" [class.book--next]="turnDirection() === 'next'" [class.book--prev]="turnDirection() === 'prev'">
+    <div
+      class="book"
+      [class.book--next]="turnDirection() === 'next'"
+      [class.book--prev]="turnDirection() === 'prev'">
       @for (leaf of [current()]; track index()) {
         <div class="book__spread">
           <div class="book__page book__page--single">
             <div class="book__page-inner">
               <p class="book__label">{{ leaf?.label }}</p>
+
+              @if (leaf?.imageUrl) {
+                <img class="book__image" [src]="leaf?.imageUrl" [alt]="leaf?.label ?? 'Page'" />
+              }
+
               @if (leaf?.text) {
-                <p class="book__text">{{ leaf?.text }}</p>
+                <!-- Every word carries its own verdict: green as it is read
+                     correctly, red when it is not, dimmed when it is skipped. -->
+                <app-reading-text
+                  [words]="words()"
+                  [interactive]="wordsTappable()"
+                  (retryWord)="retryWord($event)" />
               } @else {
                 <p class="book__empty">This page has no words yet.</p>
               }
+
               <span class="book__folio">{{ index() + 1 }}</span>
             </div>
           </div>
@@ -30,24 +69,106 @@
       }
     </div>
 
+    <!-- ---- Live reading panel ------------------------------------- -->
+
+    @if (readingState() === 'listening' && !retryTarget()) {
+      <div class="live" role="status">
+        <div class="live__head">
+          <span class="live__dot" aria-hidden="true"></span>
+          <span class="live__title">Listening… read the page out loud</span>
+        </div>
+
+        <div class="live__meters">
+          <span class="live__meter">
+            <app-icon name="check-circle" size="sm" />
+            {{ liveScore() }}% read so far
+          </span>
+
+          @if (liveWpm(); as wpm) {
+            <span class="live__meter live__meter--{{ livePace() }}">
+              <app-icon name="gauge" size="sm" />
+              {{ wpm }} words a minute
+              @if (livePace() === 'too_slow') {
+                · a little faster
+              } @else if (livePace() === 'too_fast') {
+                · slow down a little
+              }
+            </span>
+          }
+        </div>
+
+        <!-- Azure's own scores for what it has heard so far — the same
+             dimensions as the final score, filling in as the child reads. -->
+        @if (liveMeters().length) {
+          <ul class="live-scores" aria-label="How your reading is going">
+            @for (meter of liveMeters(); track meter.key) {
+              <li class="live-scores__item">
+                <span class="live-scores__label">{{ meter.label }}</span>
+                <span class="live-scores__track" aria-hidden="true">
+                  <span
+                    class="live-scores__fill live-scores__fill--{{ meterTone(meter.value) }}"
+                    [style.width.%]="meter.value"></span>
+                </span>
+                <span class="live-scores__value">{{ meter.value }}</span>
+              </li>
+            }
+          </ul>
+        }
+
+        <app-live-transcript [transcript]="liveTranscript()" [partial]="partialTranscript()" />
+      </div>
+    }
+
+    <!-- ---- One-word retry ----------------------------------------- -->
+
+    @if (retryTarget(); as target) {
+      <div class="retry" role="group" aria-label="Try this word again">
+        <p class="retry__label">Try this word</p>
+        <p class="retry__word">{{ target.text }}</p>
+
+        <div class="retry__actions">
+          <app-button variant="ghost" (clicked)="speakWord(target.text)">
+            <app-icon name="listen" size="sm" /> Hear it
+          </app-button>
+
+          @if (liveAvailable()) {
+            @if (readingState() === 'listening') {
+              <app-button (clicked)="finishWordRetry()">
+                <app-icon name="stop" size="sm" /> I said it
+              </app-button>
+            } @else {
+              <app-status-indicator status="loading" label="Getting ready…" />
+            }
+          }
+
+          <app-button variant="secondary" (clicked)="cancelWordRetry()">Done</app-button>
+        </div>
+      </div>
+    }
+
+    <!-- ---- Controls ------------------------------------------------ -->
+
     <div class="reader__controls">
-      <app-button variant="secondary" [disabled]="index() === 0" (clicked)="previous()"><app-icon name="back" size="sm" /> Previous
+      <app-button variant="secondary" [disabled]="index() === 0" (clicked)="previous()">
+        <app-icon name="back" size="sm" /> Previous
       </app-button>
 
-      <app-button (clicked)="toggleNarration()">
+      <app-button [disabled]="narrationLoading()" (clicked)="toggleNarration()">
         @if (narrationLoading()) {
-          Loading…
+          <app-icon name="gauge" size="sm" /> Loading…
         } @else if (narrating()) {
           <app-icon name="pause" size="sm" /> Stop
         } @else {
-          <app-icon name="listen" size="sm" /> Read aloud
+          <app-icon name="listen" size="sm" /> Read to me
         }
       </app-button>
 
       @if (isLastLeaf()) {
         <app-button (clicked)="finish()"><app-icon name="celebrate" size="sm" /> I'm done</app-button>
       } @else {
-        <app-button variant="secondary" (clicked)="next()">Next <app-icon name="forward" size="sm" /></app-button>
+        <app-button variant="secondary" (clicked)="next()">
+          Next <app-icon name="forward" size="sm" />
+        </app-button>
       }
     </div>
 
@@ -72,7 +193,11 @@
               [class.track__dot--done]="page.is_completed"
               [class.track__dot--here]="page.page_number === index() + 1"
               [title]="'Page ' + page.page_number + (page.is_completed ? ' — finished' : '')">
-              @if (page.is_completed) {<app-icon name="check" size="sm" />} @else {{{ page.page_number }}}
+              @if (page.is_completed) {
+                <app-icon name="check" size="sm" />
+              } @else {
+                {{ page.page_number }}
+              }
             </span>
           }
         </div>
@@ -81,15 +206,16 @@
       @if (currentPage(); as page) {
         <div class="track__page">
           @if (page.is_completed) {
-            <span class="track__done"><app-icon name="check" size="sm" /> You finished this page</span>
+            <app-status-indicator status="completed" label="You finished this page" />
           } @else if (page.has_text) {
-            <span class="track__todo">Read this page aloud to finish it</span>
+            <app-status-indicator status="in-progress" label="Read this page aloud to finish it" />
           } @else {
-            <app-button
-              variant="secondary"
-              [disabled]="markingRead()"
-              (clicked)="markPageRead()">
-              @if (markingRead()) {Saving…} @else {<app-icon name="check" size="sm" /> I’ve read this page}
+            <app-button variant="secondary" [disabled]="markingRead()" (clicked)="markPageRead()">
+              @if (markingRead()) {
+                Saving…
+              } @else {
+                <app-icon name="check" size="sm" /> I’ve read this page
+              }
             </app-button>
           }
         </div>
@@ -97,57 +223,48 @@
 
       @if (progress.is_completed) {
         <div class="track__finished">
-          <p class="track__finished-text"><app-icon name="celebrate" size="sm" /> You finished this whole book!</p>
+          <p class="track__finished-text">
+            <app-icon name="celebrate" size="sm" /> You finished this whole book!
+          </p>
           <app-button (clicked)="finish()">Back to my books</app-button>
         </div>
       }
     }
 
+    <!-- ---- Record button ------------------------------------------- -->
+
     @if (current()?.text) {
       <div class="reader__record">
-        <app-button [disabled]="recordingState() === 'assessing'" (clicked)="toggleRecording()">
-          @if (recordingState() === 'recording') {
+        <app-button [disabled]="isBusy() || scoring() || !!retryTarget()" (clicked)="toggleRecording()">
+          @if (readingState() === 'connecting' && !retryTarget()) {
+            <app-icon name="gauge" size="sm" /> Getting ready…
+          } @else if (readingState() === 'listening' && !retryTarget()) {
             <app-icon name="stop" size="sm" /> Stop &amp; check my reading
-          } @else if (recordingState() === 'assessing') {
-            Checking your reading…
+          } @else if (readingState() === 'assessing' || scoring()) {
+            <app-icon name="gauge" size="sm" /> Checking your reading…
           } @else if (result()) {
             <app-icon name="mic" size="sm" /> Read it again
           } @else {
             <app-icon name="mic" size="sm" /> Read this page aloud
           }
         </app-button>
-        @if (recordingState() === 'recording') {
-          <span class="reader__recording">● Recording… read the page out loud</span>
+
+        @if (readingState() === 'assessing' || scoring()) {
+          <app-status-indicator status="loading" label="Working out your score…" />
+        }
+
+        @if (!liveAvailable() && readingState() === 'listening') {
+          <p class="reader__fallback">
+            Recording. We’ll check every word when you’re finished.
+          </p>
         }
       </div>
     }
 
+    <!-- ---- Result summary (stays on the page after the modal closes) -->
+
     @if (result(); as attempt) {
       <div class="reader__result">
-        @if (attempt.is_off_script) {
-          <h3 class="reader__result-title">That didn’t sound like this page.</h3>
-        } @else {
-          <h3 class="reader__result-title">Nice reading! Here's how you did:</h3>
-        }
-        <div class="reader__scores">
-          <div class="score score--{{ scoreTone(attempt.pron_score) }}">
-            <span class="score__value">{{ (attempt.pron_score ?? 0).toFixed(0) }}</span>
-            <span class="score__label">Overall</span>
-          </div>
-          <div class="score score--{{ scoreTone(attempt.accuracy_score) }}">
-            <span class="score__value">{{ (attempt.accuracy_score ?? 0).toFixed(0) }}</span>
-            <span class="score__label">Accuracy</span>
-          </div>
-          <div class="score score--{{ scoreTone(attempt.fluency_score) }}">
-            <span class="score__value">{{ (attempt.fluency_score ?? 0).toFixed(0) }}</span>
-            <span class="score__label">Fluency</span>
-          </div>
-          <div class="score score--{{ scoreTone(attempt.completeness_score) }}">
-            <span class="score__value">{{ (attempt.completeness_score ?? 0).toFixed(0) }}</span>
-            <span class="score__label">Completeness</span>
-          </div>
-        </div>
-        <!-- What we actually heard, so a pupil can see why they scored as they did. -->
         <p class="reader__heard">
           @if (attempt.recognized_text) {
             We heard: “{{ attempt.recognized_text }}”
@@ -155,6 +272,7 @@
             We couldn’t make out any words.
           }
         </p>
+
         <p class="reader__match">
           That matched {{ (attempt.text_match_score ?? 0).toFixed(0) }}% of the words on this page.
           @if (readAloudHint(); as hint) {
@@ -162,18 +280,21 @@
           }
         </p>
 
-        <!-- Always give the reader somewhere to go after a score. -->
-        <div class="reader__after">
-          @if (isLastLeaf()) {
-            <p class="reader__after-text">
-              That was the last {{ current()?.kind === 'page' ? 'page' : 'chapter' }} of this book!
-            </p>
-            <app-button (clicked)="finish()"><app-icon name="celebrate" size="sm" /> Finish this book</app-button>
-          } @else {
-            <app-button (clicked)="next()">Next page <app-icon name="forward" size="sm" /></app-button>
-          }
-        </div>
+        <app-button variant="ghost" (clicked)="showScore.set(true)">
+          <app-icon name="trophy" size="sm" /> See my score again
+        </app-button>
       </div>
     }
   </div>
 }
+
+<app-score-modal
+  [open]="showScore()"
+  [attempt]="result()"
+  [celebrations]="celebrations()"
+  [passMark]="passMark()"
+  [paceHint]="paceHint()"
+  [words]="words()"
+  (retry)="readAgain()"
+  (next)="continueAfterScore()"
+  (closed)="dismissScore()" />

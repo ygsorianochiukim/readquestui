@@ -68,9 +68,28 @@
   // ---- Typography (template fonts) ----
   --font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-display: "Irish Grover", "Montserrat", system-ui, cursive;
-  --font-size-sm: 0.85rem;
-  --font-size-base: 0.95rem;
-  --font-size-lg: 1.15rem;
+  // The scale starts at a full 1rem rather than 0.95: most of this app is read
+  // by children on tablets held at arm's length, and shrinking the base size
+  // to fit more in was costing legibility everywhere it was used.
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.2rem;
   --font-size-xl: 1.5rem;
   --font-size-2xl: 2rem;
+
+  // Line height as a token, so text blocks and UI labels can differ on purpose
+  // rather than by accident.
+  --line-height-tight: 1.3;
+  --line-height-base: 1.6;
+  --line-height-reading: 1.9;
+
+  // ---- Layers ----
+  // Stacking order in one place. Components were each picking their own
+  // number, which is how a modal ended up underneath the bottom nav.
+  --z-hud: 20;
+  --z-scrim: 25;
+  --z-dock: 30;
+  --z-overlay: 1000; // modals, side panels
+  --z-toast: 1100; // always above an overlay
 }

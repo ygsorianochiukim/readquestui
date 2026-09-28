@@ -1,0 +1,205 @@
+@if (loading()) {
+  <app-spinner label="Loading the reading report…" />
+} @else if (!report()) {
+  <app-alert [message]="errorMessage()" variant="error" />
+} @else if (report(); as data) {
+  <app-page-header
+    [title]="data.student.full_name + ' — reading report'"
+    [subtitle]="
+      'Reading level ' +
+      (data.student.reading_level ?? 'not set') +
+      ' · target ' +
+      data.pace_band.min_wpm +
+      '–' +
+      data.pace_band.max_wpm +
+      ' words a minute'
+    " />
+
+  <div class="report__toolbar">
+    <app-button variant="secondary" (clicked)="back()">
+      <app-icon name="back" size="sm" /> Back to pupils
+    </app-button>
+    <app-button variant="ghost" (clicked)="print()">
+      <app-icon name="print" size="sm" /> Print
+    </app-button>
+  </div>
+
+  @if (data.summary.total_attempts === 0) {
+    <app-empty-state
+      icon="mic"
+      title="No readings yet"
+      message="Once this pupil records themselves reading aloud, their report will build up here." />
+  } @else {
+    <!-- ---- Headline numbers ---------------------------------------- -->
+
+    <div class="stats">
+      <app-card>
+        <p class="stats__value">{{ data.summary.average_score | number: '1.0-0' }}</p>
+        <p class="stats__label">Average score</p>
+      </app-card>
+
+      <app-card>
+        <p class="stats__value">{{ passRate() }}%</p>
+        <p class="stats__label">
+          Readings passed ({{ data.summary.passed_attempts }} of {{ data.summary.total_attempts }})
+        </p>
+      </app-card>
+
+      <app-card>
+        <p class="stats__value">{{ data.summary.average_wpm ?? '—' }}</p>
+        <p class="stats__label">
+          Words a minute
+          <span class="stats__band">target {{ data.pace_band.min_wpm }}–{{ data.pace_band.max_wpm }}</span>
+        </p>
+      </app-card>
+
+      <app-card>
+        <p class="stats__value">{{ data.summary.awaiting_review }}</p>
+        <p class="stats__label">Waiting for your review</p>
+      </app-card>
+    </div>
+
+    <!-- ---- The words they keep getting wrong ------------------------ -->
+    <!-- First, because it is the only part a teacher can act on today.  -->
+
+    <app-card>
+      <h2 class="report__title"><app-icon name="target" size="sm" /> Words to work on</h2>
+
+      @if (data.missed_words.length === 0) {
+        <p class="report__note">
+          Nothing stands out — this pupil has not repeatedly missed any word.
+        </p>
+      } @else {
+        <ul class="missed">
+          @for (word of data.missed_words; track word.word) {
+            <li class="missed__row">
+              <span class="missed__word">{{ word.word }}</span>
+              <span class="missed__bar">
+                <app-progress-bar [percent]="missShare(word)" [showLabel]="false" />
+              </span>
+              <span class="missed__count">
+                missed {{ word.times_missed }}
+                {{ word.times_missed === 1 ? 'time' : 'times' }}
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </app-card>
+
+    <!-- ---- Progress over time -------------------------------------- -->
+
+    @if (trendPoints()) {
+      <app-card>
+        <h2 class="report__title"><app-icon name="gauge" size="sm" /> Scores over time</h2>
+
+        <svg
+          class="trend"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          role="img"
+          [attr.aria-label]="
+            'Reading scores over the last ' + trend().length + ' readings'
+          ">
+          <!-- The pass mark, so the line means something without an axis. -->
+          <line
+            class="trend__pass"
+            x1="0"
+            [attr.y1]="passLine()"
+            x2="100"
+            [attr.y2]="passLine()" />
+          <polyline class="trend__line" [attr.points]="trendPoints()" />
+        </svg>
+
+        <p class="report__note">
+          The dashed line is the {{ data.summary.pass_mark }} pass mark. Newest
+          readings are on the right.
+        </p>
+      </app-card>
+    }
+
+    <!-- ---- How they read ------------------------------------------- -->
+
+    <app-card>
+      <h2 class="report__title"><app-icon name="speech" size="sm" /> How they read</h2>
+
+      <div class="dims">
+        <div class="dims__row">
+          <span class="dims__label">Saying the words</span>
+          <app-progress-bar [percent]="data.summary.average_accuracy ?? 0" />
+        </div>
+        <div class="dims__row">
+          <span class="dims__label">Reading smoothly</span>
+          <app-progress-bar [percent]="data.summary.average_fluency ?? 0" />
+        </div>
+        <div class="dims__row">
+          <span class="dims__label">Reading it all</span>
+          <app-progress-bar [percent]="data.summary.average_completeness ?? 0" />
+        </div>
+        @if (data.summary.average_prosody; as prosody) {
+          <div class="dims__row">
+            <span class="dims__label">Reading with feeling</span>
+            <app-progress-bar [percent]="prosody" />
+          </div>
+        }
+        @if (data.summary.average_diction; as diction) {
+          <div class="dims__row" title="Diction: how clearly each sound was said">
+            <span class="dims__label">Speaking clearly</span>
+            <app-progress-bar [percent]="diction" />
+          </div>
+        }
+      </div>
+
+      <div class="pace">
+        <span class="pace__chip pace__chip--slow">
+          {{ data.summary.pace_counts.too_slow }} too slow
+        </span>
+        <span class="pace__chip pace__chip--good">
+          {{ data.summary.pace_counts.good }} just right
+        </span>
+        <span class="pace__chip pace__chip--fast">
+          {{ data.summary.pace_counts.too_fast }} too fast
+        </span>
+      </div>
+    </app-card>
+
+    <!-- ---- Every reading ------------------------------------------- -->
+
+    <app-card>
+      <h2 class="report__title"><app-icon name="log" size="sm" /> Every reading</h2>
+
+      <ul class="history">
+        @for (attempt of data.attempts; track attempt.id) {
+          <li class="history__row">
+            <span class="history__when">{{ attempt.created_at }}</span>
+
+            <span class="history__score">
+              {{ attempt.score === null ? '—' : (attempt.score | number: '1.0-0') }}%
+              @if (attempt.teacher_score !== null) {
+                <app-icon name="verified" size="sm" label="Score set by you" />
+              }
+            </span>
+
+            <app-status-indicator [status]="attemptState(attempt)" size="sm" />
+
+            @if (attempt.missed_word_count) {
+              <span class="history__missed">{{ attempt.missed_word_count }} words missed</span>
+            }
+
+            @if (paceLabel(attempt); as pace) {
+              <span class="history__pace">{{ attempt.words_per_minute }} wpm · {{ pace }}</span>
+            }
+
+            @if (attempt.audio_url) {
+              <audio class="history__audio" controls [src]="attempt.audio_url"></audio>
+            }
+
+            @if (attempt.teacher_note) {
+              <p class="history__note">“{{ attempt.teacher_note }}”</p>
+            }
+          </li>
+        }
+      </ul>
+    </app-card>
+  }
+}

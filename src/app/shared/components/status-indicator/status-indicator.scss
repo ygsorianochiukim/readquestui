@@ -1,0 +1,72 @@
+@use 'abstracts' as *;
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.22rem 0.7rem;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  white-space: nowrap;
+
+  &--sm {
+    font-size: var(--font-size-xs, 0.75rem);
+    padding: 0.15rem 0.55rem;
+  }
+
+  &--md {
+    font-size: var(--font-size-sm);
+  }
+
+  &--compact {
+    padding: 0;
+    background: none !important;
+  }
+
+  // Each state pairs a colour with its own icon, so the meaning survives a
+  // greyscale print-out and a colour-blind reader.
+  &--correct,
+  &--passed,
+  &--completed {
+    background: var(--color-success-soft);
+    color: #0f7a45;
+  }
+
+  &--incorrect,
+  &--failed {
+    background: var(--color-danger-soft);
+    color: #b81638;
+  }
+
+  &--loading,
+  &--pending {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+  }
+
+  &--locked {
+    background: var(--color-background);
+    color: var(--color-text-soft);
+  }
+
+  &--in-progress {
+    background: var(--color-warning-soft);
+    color: #9a5100;
+  }
+
+  &__icon--spinning {
+    animation: status-spin 1.1s linear infinite;
+  }
+}
+
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status__icon--spinning {
+    animation-duration: 3s;
+  }
+}

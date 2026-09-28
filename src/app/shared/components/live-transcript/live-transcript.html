@@ -1,0 +1,17 @@
+<section class="transcript" aria-label="What the app heard you read">
+  <p class="transcript__heading">{{ heading() }}</p>
+
+  <!-- Polite, so a screen reader follows along without interrupting. -->
+  <div class="transcript__body" #scroller aria-live="polite">
+    @if (isEmpty()) {
+      <span class="transcript__placeholder">Start reading — your words will show up here.</span>
+    } @else {
+      @if (transcript()) {
+        <span class="transcript__final">{{ transcript() }}</span>
+      }
+      @if (partial()) {
+        <span class="transcript__partial">{{ partial() }}</span>
+      }
+    }
+  </div>
+</section>

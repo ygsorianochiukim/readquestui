@@ -1,0 +1,330 @@
+<app-page-header
+  title="Upload reading material"
+  subtitle="Drop in a PDF or photos of the pages. We read the words off them and build the book — you just check it and press publish." />
+
+<app-alert [message]="errorMessage()" variant="error" />
+
+@if (!canRenderPdfPages()) {
+  <!-- Said before the upload, not after: a teacher uploading a picture book
+       needs to know this while they can still choose to send photos. -->
+  <app-alert
+    variant="info"
+    message="This server can read the words out of a PDF but cannot keep its page pictures. For picture books, upload photos of the pages instead." />
+}
+
+<!-- ---- Drop zone --------------------------------------------------- -->
+
+<div
+  class="drop"
+  [class.drop--over]="dragging()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave()"
+  (drop)="onDrop($event)">
+  @if (uploading()) {
+    <app-status-indicator status="loading" label="Sending your file…" />
+  } @else {
+    <app-icon class="drop__icon" name="upload" size="2xl" />
+    <p class="drop__title">Drop a PDF or page photos here</p>
+    <p class="drop__note">One PDF, or as many page images as you like.</p>
+
+    <label class="drop__button">
+      <input
+        type="file"
+        multiple
+        accept="application/pdf,image/*"
+        (change)="onFilesChosen($event)" />
+      <span><app-icon name="upload" size="sm" /> Choose files</span>
+    </label>
+  }
+</div>
+
+<!-- ---- Recent uploads ---------------------------------------------- -->
+
+@if (loading()) {
+  <app-spinner label="Loading your uploads…" />
+} @else if (batches().length === 0) {
+  <app-empty-state
+    icon="books"
+    title="No uploads yet"
+    message="Everything you upload will be listed here while it is being read." />
+} @else {
+  <app-card>
+    <h2 class="uploads__title">Your uploads</h2>
+
+    <ul class="uploads">
+      @for (batch of batches(); track batch.id) {
+        <li class="uploads__row">
+          <span class="uploads__name">
+            {{ batch.book?.title || batch.source_name }}
+            <small>{{ batch.source_name }}</small>
+          </span>
+
+          <app-status-indicator [status]="batchStatus(batch)" size="sm" />
+
+          @if (!batch.is_finished) {
+            <span class="uploads__progress">
+              <app-progress-bar [percent]="batch.percent" />
+            </span>
+          } @else if (batch.status === 'failed') {
+            <span class="uploads__error">{{ batch.error }}</span>
+          }
+
+          @if (batch.status !== 'committed') {
+            <app-button variant="ghost" (clicked)="watch(batch.id)">
+              {{ batch.status === 'ready' ? 'Check it' : 'Watch' }}
+            </app-button>
+          }
+        </li>
+      }
+    </ul>
+  </app-card>
+}
+
+<!-- ---- Preview ----------------------------------------------------- -->
+
+@if (preview(); as data) {
+  <div class="preview">
+    <div class="preview__overlay" (click)="close()"></div>
+
+    <section class="preview__panel" role="dialog" aria-modal="true" aria-label="Check this upload">
+      <header class="preview__head">
+        <div>
+          <h2 class="preview__title">{{ data.book?.title || data.batch.source_name }}</h2>
+          <p class="preview__status">{{ data.status_message }}</p>
+        </div>
+        <button type="button" class="preview__close" (click)="close()" aria-label="Close">
+          <app-icon name="close" size="lg" />
+        </button>
+      </header>
+
+      @if (isWorking()) {
+        <div class="preview__working">
+          <app-progress-bar [percent]="data.batch.percent" />
+          <p class="preview__note">
+            You can leave this page — we will keep reading, and it will be here
+            when you come back.
+          </p>
+        </div>
+      }
+
+      @if (data.batch.status === 'failed') {
+        <app-alert variant="error" [message]="data.batch.error ?? 'Something went wrong.'" />
+        <app-button variant="danger" (clicked)="discard()">Discard this upload</app-button>
+      }
+
+      @if (isReady()) {
+        @if (data.batch.text_only) {
+          <app-alert
+            variant="info"
+            message="We could read the words but not keep the page pictures. The book will be text only." />
+        }
+
+        @if (pagesWithoutText() > 0) {
+          <app-alert
+            variant="info"
+            [message]="
+              pagesWithoutText() +
+              ' page(s) came back with no words. That is normal for picture pages. If one does have words, use Read again or Replace photo on it below.'
+            " />
+        }
+
+        <!-- ---- Book details ---------------------------------------- -->
+
+        <div class="preview__fields">
+          <label class="preview__field">
+            <span class="preview__label">Book title</span>
+            <input
+              class="preview__input"
+              type="text"
+              [ngModel]="title()"
+              (ngModelChange)="title.set($event)" />
+          </label>
+
+          <label class="preview__field">
+            <span class="preview__label">Reading level</span>
+            <input
+              class="preview__input"
+              type="text"
+              placeholder="e.g. Level 2"
+              [ngModel]="readingLevel()"
+              (ngModelChange)="readingLevel.set($event)" />
+          </label>
+        </div>
+
+        <!-- Every book comes out as Book → Chapters → Content; this only
+             decides what the content of a chapter is. -->
+        <fieldset class="preview__choice">
+          <legend class="preview__label">What kind of book is this?</legend>
+
+          <label class="preview__check">
+            <input
+              type="radio"
+              name="book-kind"
+              [value]="false"
+              [ngModel]="asChapters()"
+              (ngModelChange)="asChapters.set($event)" />
+            <span>
+              <strong>Picture book</strong> — pupils read the pages as they are,
+              grouped into chapters.
+            </span>
+          </label>
+
+          <label class="preview__check">
+            <input
+              type="radio"
+              name="book-kind"
+              [value]="true"
+              [ngModel]="asChapters()"
+              (ngModelChange)="asChapters.set($event)" />
+            <span>
+              <strong>Chapter reader</strong> — each chapter's text becomes a story
+              with read-aloud, games and a quiz written from it.
+            </span>
+          </label>
+        </fieldset>
+
+        <!-- ---- Chapters -------------------------------------------- -->
+
+        @if (!asChapters()) {
+          <section class="preview__section">
+            <h3 class="preview__section-title">Chapters</h3>
+            <p class="preview__note">
+              Split at the chapter headings we found, or into even parts when there
+              were none. Rename them if you like.
+            </p>
+
+            <ul class="chapters">
+              @for (part of parts(); track part.chapter_number) {
+                <li class="chapters__row">
+                  <span class="chapters__number">{{ part.chapter_number }}</span>
+                  <input
+                    class="preview__input"
+                    type="text"
+                    [value]="part.title"
+                    (change)="updatePartTitle($index, $event)" />
+                  <span class="chapters__pages">
+                    pages {{ pageRange(part.page_numbers) }}
+                  </span>
+                </li>
+              }
+            </ul>
+          </section>
+        } @else {
+          <section class="preview__section">
+            <h3 class="preview__section-title">Chapters we found</h3>
+
+            @if (chapters().length === 0) {
+              <p class="preview__note">
+                We could not find any chapter headings, so the whole book will be
+                one chapter.
+              </p>
+            } @else {
+              <ul class="chapters">
+                @for (chapter of chapters(); track chapter.chapter_number) {
+                  <li class="chapters__row">
+                    <span class="chapters__number">{{ chapter.chapter_number }}</span>
+                    <input
+                      class="preview__input"
+                      type="text"
+                      [value]="chapter.title"
+                      (change)="updateChapterTitle($index, $event)" />
+                    <span class="chapters__pages">
+                      pages {{ chapter.page_numbers.join(', ') }}
+                    </span>
+                    <button
+                      type="button"
+                      class="chapters__remove"
+                      (click)="removeChapter($index)"
+                      aria-label="Remove this chapter">
+                      <app-icon name="delete" size="sm" />
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        }
+
+        <!-- ---- Pages ----------------------------------------------- -->
+
+        <section class="preview__section">
+          <h3 class="preview__section-title">What we read off each page</h3>
+          <p class="preview__note">
+            If a page read badly, read it again or replace it with a clearer photo.
+            Small scanning mistakes can be fixed in the box; changes save as you
+            leave it.
+          </p>
+
+          <ul class="pages">
+            @for (page of data.pages; track page.id) {
+              <li class="pages__row">
+                @if (page.image_url) {
+                  <img class="pages__image" [src]="page.image_url" [alt]="'Page ' + page.page_number" />
+                } @else {
+                  <div class="pages__image pages__image--none">
+                    <app-icon name="story" size="xl" />
+                  </div>
+                }
+
+                <div class="pages__text">
+                  <div class="pages__text-head">
+                    <span class="pages__number">Page {{ page.page_number }}</span>
+                    @if (savingPageId() === page.id) {
+                      <app-status-indicator status="loading" label="Saving…" size="sm" />
+                    }
+                    @if (rescanningPageId() === page.id) {
+                      <app-status-indicator status="loading" label="Reading…" size="sm" />
+                    }
+                  </div>
+
+                  <textarea
+                    class="preview__input pages__area"
+                    rows="6"
+                    [value]="page.text ?? ''"
+                    (change)="onPageTextChange(page.id, $event)"
+                    [attr.aria-label]="'Fix scanning mistakes on page ' + page.page_number"
+                    placeholder="No words were found on this page."></textarea>
+
+                  <!-- Fix a bad read by scanning again, not by typing. -->
+                  <div class="pages__rescan">
+                    @if (page.image_url) {
+                      <app-button
+                        variant="ghost"
+                        [disabled]="rescanningPageId() !== null"
+                        (clicked)="rescanPage(page.id)">
+                        <app-icon name="retry" size="sm" /> Read again
+                      </app-button>
+                    }
+                    <input
+                      #replaceInput
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      (change)="onReplacePhoto(page.id, $event)" />
+                    <app-button
+                      variant="ghost"
+                      [disabled]="rescanningPageId() !== null"
+                      (clicked)="replaceInput.click()">
+                      <app-icon name="scan" size="sm" /> Replace photo
+                    </app-button>
+                  </div>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <footer class="preview__actions">
+          <app-button [disabled]="publishing()" (clicked)="publish()">
+            <app-icon name="check" size="sm" />
+            {{ publishing() ? 'Publishing…' : 'Publish this book' }}
+          </app-button>
+
+          <app-button variant="danger" [disabled]="publishing()" (clicked)="discard()">
+            <app-icon name="delete" size="sm" /> Discard
+          </app-button>
+        </footer>
+      }
+    </section>
+  </div>
+}

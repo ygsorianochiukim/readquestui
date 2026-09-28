@@ -70,42 +70,27 @@
     padding: 0 2px;
   }
 
+  // Each step is its own coloured sticker; finished ones turn to a green tick.
   &__bubble {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    background: #eef1f8;
-    color: var(--color-text-muted);
-    border: 3px solid transparent;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08);
-    transition: transform 0.12s ease;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+
+  &__stage:hover &__bubble { transform: translateY(-3px) rotate(-4deg); }
 
   &__label {
     font-size: 0.7rem;
-    font-weight: 700;
+    font-weight: 800;
     color: var(--color-text-muted);
   }
 
+  // The step you are on pops up bigger, ringed in white.
   &__stage--active &__bubble {
-    background: linear-gradient(160deg, #6fa8ff, var(--color-primary));
-    color: #fff;
-    border-color: #fff;
-    transform: scale(1.08);
-    box-shadow: 0 5px 0 var(--color-primary-dark), 0 8px 12px rgba(0, 0, 0, 0.18);
+    transform: translateY(-3px) scale(1.14);
+    outline: 3px solid #fff;
+    outline-offset: 1px;
   }
 
   &__stage--active &__label { color: var(--color-primary-dark); }
-
-  &__stage--done &__bubble {
-    background: linear-gradient(160deg, #6ee7a0, var(--color-success));
-    color: #fff;
-    box-shadow: 0 4px 0 #159a54;
-  }
 }
 
 // ---- Stage panel ---------------------------------------------------------
@@ -266,6 +251,158 @@
       background: var(--color-primary-soft);
       color: var(--color-primary-dark);
     }
+
+    // Once answered the choices lock, but keep their colours readable.
+    &:disabled {
+      cursor: default;
+      transform: none;
+    }
+
+    &--right {
+      border-color: var(--color-success);
+      background: var(--color-success-soft);
+      color: var(--color-success);
+    }
+
+    &--wrong {
+      border-color: var(--color-danger);
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
+    }
+  }
+
+  &__progress {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-text-muted);
+  }
+
+  &__feedback {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    animation: quiz-pop 0.2s ease-out;
+
+    &--right { background: var(--color-success-soft); color: var(--color-success); }
+    &--wrong { background: var(--color-danger-soft); color: var(--color-danger); }
+  }
+}
+
+@keyframes quiz-pop {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.quiz-review {
+  list-style: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+
+    &--right { background: var(--color-success-soft); color: var(--color-success); }
+  }
+
+  &__q {
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  &__a {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+// ---- Game picker ---------------------------------------------------------
+.games {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+
+  @media (max-width: $breakpoint-sm) {
+    grid-template-columns: 1fr;
+  }
+
+  &__tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fff;
+    cursor: pointer;
+    transition: transform 0.1s ease, border-color 0.1s ease;
+
+    &:hover { transform: translateY(-1px); border-color: var(--color-primary); }
+
+    &--won { background: var(--color-success-soft); }
+
+    &--active {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-soft);
+    }
+  }
+
+  &__name {
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  &__stars {
+    font-size: var(--font-size-lg);
+    letter-spacing: 2px;
+  }
+
+  &__star {
+    color: var(--color-border);
+
+    &--on { color: var(--color-yellow); }
+  }
+
+  &__points {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__total {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-weight: 700;
+    color: var(--color-warning);
+  }
+
+  &__title {
+    margin-top: var(--space-4);
+    font-family: var(--font-display);
+    color: var(--color-text);
+  }
+
+  &__message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    font-weight: 700;
+    color: var(--color-success);
   }
 }
 
@@ -283,4 +420,101 @@
 
     &--pass { color: var(--color-success); }
   }
+}
+
+// ---- Read aloud, page by page ------------------------------------------
+.readpages {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+
+  &__turn {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 0 var(--color-primary-dark);
+
+    &:active:not(:disabled) {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 var(--color-primary-dark);
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  &__middle {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  &__count {
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
+    color: var(--color-text);
+  }
+
+  &__summary {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-text-muted);
+  }
+
+  // One dot per page. Wraps onto more rows for a long chapter.
+  &__dots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__dot {
+    display: block;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #d5dae4;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease;
+
+    &--great { background: var(--color-success); }
+    &--good { background: #ffbf1f; }
+    &--grow { background: #ff8a80; }
+
+    &--current {
+      transform: scale(1.45);
+      box-shadow: 0 0 0 2px var(--color-primary);
+    }
+
+    &:disabled { cursor: default; }
+  }
+}
+
+// One paragraph at a time: large, centred, easy to follow with a finger.
+.act__reading--page {
+  display: block;
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: #fffaf0;
+  text-align: center;
 }

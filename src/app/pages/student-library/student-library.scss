@@ -1,184 +1,304 @@
 @use 'abstracts' as *;
 
-// A tall, scrollable candy world (portrait, like a saga map). The map artwork
-// is the softened background; a bold candy road winds up it with glossy
-// numbered level bubbles sitting right on the path.
-.worldmap {
-  position: relative;
-  width: 100%;
-  max-width: 520px;
-  margin: 0 auto;
+// =============================================================
+//  Banner — who you are, where you are, what you have finished
+// =============================================================
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
   border-radius: var(--radius-lg);
-  overflow: hidden;
-  // The map artwork, stretched to fill the whole world (no repeat, no seam).
-  background: url('/map.png') center / 100% 100% no-repeat;
-  box-shadow: 0 12px 30px rgba(20, 40, 90, 0.35);
+  background: linear-gradient(135deg, #5b8def, #8ab4f8);
+  color: #fff;
+  box-shadow: var(--shadow-md);
 
-  // Checkered goal flag at the top.
-  &__flag {
-    position: absolute;
-    top: 14px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 2.4rem;
-    z-index: 4;
-    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35));
+  &__who {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-width: 0;
   }
 
-  &__trail {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+  &__crown {
+    color: #ffd75e;
+  }
+
+  &__hello {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.3rem, 1.1rem + 1vw, 1.8rem);
+  }
+
+  &__now {
+    margin: var(--space-1) 0 0;
+    font-size: var(--font-size-sm);
+    opacity: 0.95;
+  }
+
+  &__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin: 0;
+  }
+
+  &__stat {
+    text-align: center;
+
+    dt {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.85;
+    }
+
+    dd {
+      margin: 2px 0 0;
+      font-size: 1.6rem;
+      font-weight: 800;
+      line-height: 1;
+
+      span {
+        font-size: 0.85rem;
+        font-weight: 600;
+        opacity: 0.8;
+      }
+    }
+  }
+}
+
+// =============================================================
+//  The kingdom
+// =============================================================
+.kingdom {
+  position: relative;
+  // Also the frame the zoom happens inside: the magnified town never spills
+  // over the banner or the rest of the page.
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+
+  // No second tap while the camera is moving.
+  &--zooming {
     pointer-events: none;
   }
 
-  // The candy road: dark-pink edge, bright-pink body, white candy stripes.
-  &__edge {
-    fill: none;
-    stroke: #d64c8c;
-    stroke-width: 44;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  // The sky and the map move together. Everything in here is CSS shapes and
+  // vector icons — no raster images — so magnifying it stays crisp.
+  &__world {
+    position: relative;
+    transform-origin: var(--zoom-origin, 50% 50%);
+
+    // `will-change: opacity` only, and only while moving. A transform hint
+    // would freeze the layer's raster at 1× and blow it up blurry; left to
+    // itself the browser rasterises a transform animation at its largest scale.
+    // The classes come off when the zoom ends, so nothing stays promoted.
+    &--in {
+      will-change: opacity;
+      animation: kingdom-zoom-in 600ms cubic-bezier(0.55, 0, 0.35, 1) forwards;
+    }
+
+    &--out {
+      will-change: opacity;
+      animation: kingdom-zoom-out 600ms cubic-bezier(0.25, 0, 0.3, 1) both;
+    }
   }
 
-  &__road {
-    fill: none;
-    stroke: #ffb0d6;
-    stroke-width: 34;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  &__stripes {
-    fill: none;
-    stroke: rgba(255, 255, 255, 0.9);
-    stroke-width: 34;
-    stroke-linecap: butt;
-    stroke-linejoin: round;
-    stroke-dasharray: 9 26;
-  }
-}
-
-// ---- A single level "spot" ---------------------------------------------
-.spot {
-  position: absolute;
-  width: 0;
-  height: 0;
-
-  // A glossy candy-ball button, centred on the path.
-  &__node {
+  &__sky {
     position: absolute;
-    left: 0;
-    top: 0;
-    transform: translate(-50%, -50%);
-    width: 66px;
-    height: 66px;
-    border: 4px solid #fff;
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    color: #fff;
-    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
-    cursor: pointer;
-    z-index: 2;
-    overflow: hidden;
-    transition: transform 0.15s ease;
-    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.22), 0 9px 16px rgba(0, 0, 0, 0.3);
+    inset: 0;
+    pointer-events: none;
   }
 
-  // Glossy highlight.
-  &__node::before {
-    content: '';
+  &__sun {
     position: absolute;
-    top: 7px;
-    left: 12px;
-    width: 22px;
-    height: 14px;
+    top: 24px;
+    right: 8%;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.65);
-    filter: blur(1px);
+    background: #ffe27a;
+    box-shadow: 0 0 44px rgba(255, 210, 80, 0.75);
   }
 
-  &__node:hover:not(:disabled) { transform: translate(-50%, -50%) translateY(-3px) scale(1.06); }
-  &__node:active:not(:disabled) { transform: translate(-50%, -50%) translateY(2px); }
-
-  &__icon { font-size: 1.6rem; position: relative; }
-  &__num { position: relative; }
-
-  // Owl buddy marking the player's current level.
-  &__buddy {
+  &__cloud {
     position: absolute;
-    left: 0;
-    top: 0;
-    transform: translate(-50%, -50%) translateY(-54px);
-    font-size: 2.2rem;
-    z-index: 3;
-    filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.4));
-    animation: spot-bob 1.6s ease-in-out infinite;
-  }
-
-  // Compact title label under the bubble.
-  &__card {
-    position: absolute;
-    left: 0;
-    top: 38px;
-    transform: translateX(-50%);
-    width: 150px;
-    padding: 4px 10px;
+    height: 26px;
     border-radius: var(--radius-full);
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 3px 8px rgba(20, 40, 90, 0.3);
-    text-align: center;
-  }
+    background: rgba(255, 255, 255, 0.9);
 
-  &__name {
-    font-weight: 800;
-    font-size: 0.78rem;
-    color: var(--color-text);
-    line-height: 1.15;
-    @include clamp-lines(1);
+    &--1 {
+      top: 46px;
+      left: 12%;
+      width: 108px;
+    }
+
+    &--2 {
+      top: 92px;
+      left: 58%;
+      width: 76px;
+    }
   }
 
   &__hint {
-    font-size: 0.68rem;
-    font-weight: 800;
-    color: var(--color-primary-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    transition: opacity 0.2s ease;
 
-    &--done { color: var(--color-success); }
+    &--hidden {
+      opacity: 0;
+    }
   }
 }
 
-// ---- Per-state bubble colours -----------------------------------------
-.spot--completed .spot__node { background: radial-gradient(circle at 38% 32%, #ffe08a, #ffb01f 70%); }
-.spot--current .spot__node {
-  background: radial-gradient(circle at 38% 32%, #8fc0ff, var(--color-primary) 70%);
-  animation: spot-pulse 1.6s ease-in-out infinite;
-}
-.spot--available .spot__node { background: radial-gradient(circle at 38% 32%, #8fefb6, var(--color-success) 70%); }
-.spot--locked .spot__node {
-  background: radial-gradient(circle at 38% 32%, #dfe3ec, #9aa0b4 70%);
-  cursor: not-allowed;
-  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.16), 0 6px 10px rgba(0, 0, 0, 0.2);
-}
-.spot--locked .spot__card { background: rgba(255, 255, 255, 0.82); }
-.spot--locked .spot__hint { color: var(--color-text-soft); }
-
-// ---- Animations --------------------------------------------------------
-@keyframes spot-pulse {
-  0%, 100% { box-shadow: 0 6px 0 rgba(0,0,0,.22), 0 9px 16px rgba(0,0,0,.3), 0 0 0 0 rgba(79,131,230,.55); }
-  50% { box-shadow: 0 6px 0 rgba(0,0,0,.22), 0 9px 16px rgba(0,0,0,.3), 0 0 0 14px rgba(79,131,230,0); }
+// Fly into the tapped tower: it grows to fill the frame, then the town fades
+// out just before the rooms take over. --zoom-transform and --zoom-origin are
+// measured from the tower's position when it is tapped.
+@keyframes kingdom-zoom-in {
+  0% {
+    transform: none;
+    opacity: 1;
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    transform: var(--zoom-transform, scale(1.6));
+    opacity: 0;
+  }
 }
 
-@keyframes spot-bob {
-  0%, 100% { transform: translate(-50%, -50%) translateY(-54px); }
-  50% { transform: translate(-50%, -50%) translateY(-62px); }
+// The same flight in reverse, the town fading back in as it pulls away.
+@keyframes kingdom-zoom-out {
+  0% {
+    transform: var(--zoom-transform, scale(1.6));
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+// =============================================================
+//  Inside a book
+// =============================================================
+.inside {
+  // Arriving from the zoom: the rooms settle in from slightly larger, as if
+  // the camera were still coming to rest.
+  animation: inside-in 380ms cubic-bezier(0.2, 0, 0.3, 1) both;
+
+  &--leaving {
+    pointer-events: none;
+    animation: inside-out 250ms ease-in forwards;
+  }
+
+  &__back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-primary-dark);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+
+  &__head {
+    margin: var(--space-4) 0 var(--space-5);
+  }
+
+  &__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2.1rem);
+  }
+
+  &__meta {
+    margin: var(--space-1) 0 var(--space-3);
+    color: var(--color-text-muted);
+  }
+}
+
+@keyframes inside-in {
+  from {
+    transform: scale(1.06);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes inside-out {
+  from {
+    transform: none;
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.04);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spot--current .spot__node,
-  .spot__buddy { animation: none; }
+  // The zoom becomes a plain cross-fade. Durations match FADE_MS.
+  .kingdom__world--in {
+    will-change: opacity;
+    animation: fade-out 200ms ease forwards;
+  }
+
+  .kingdom__world--out {
+    will-change: opacity;
+    animation: fade-in 200ms ease both;
+  }
+
+  .inside {
+    animation: fade-in 200ms ease both;
+  }
+
+  .inside--leaving {
+    animation: fade-out 200ms ease forwards;
+  }
+}
+
+@media (max-width: $breakpoint-sm) {
+  .banner__stats {
+    gap: var(--space-3);
+  }
 }

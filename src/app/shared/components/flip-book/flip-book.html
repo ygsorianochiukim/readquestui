@@ -1,0 +1,57 @@
+<ng-template #face let-page>
+  @if (page?.heading) {
+    <h3 class="page__heading">{{ page.heading }}</h3>
+  }
+  @if (page?.imageUrl) {
+    <img class="page__image" [src]="page.imageUrl" [alt]="alt()" draggable="false" />
+  }
+  @if (page?.text) {
+    <p class="page__text" [class.page__text--solo]="!page.imageUrl">{{ page.text }}</p>
+  }
+</ng-template>
+
+<div
+  class="book"
+  [class.book--turning]="turn()"
+  (pointerdown)="onPointerDown($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointercancel)="onPointerUp($event)">
+  <!-- The pages still to come, peeking out as a stack along the edge. -->
+  <div class="book__stack" [class.book__stack--empty]="isLast()" aria-hidden="true"></div>
+
+  <div class="page" aria-live="polite">
+    <ng-container *ngTemplateOutlet="face; context: { $implicit: under() }" />
+    <span class="page__number">{{ index() + 1 }}</span>
+  </div>
+
+  @if (leaf(); as page) {
+    <div class="leaf leaf--{{ turn()?.dir }}" aria-hidden="true">
+      <div class="leaf__front page">
+        <ng-container *ngTemplateOutlet="face; context: { $implicit: page }" />
+      </div>
+      <div class="leaf__back"></div>
+    </div>
+  }
+</div>
+
+<nav class="controls" aria-label="Turn the page">
+  <button
+    type="button"
+    class="controls__turn"
+    [disabled]="isFirst()"
+    aria-label="Previous page"
+    (click)="previous()">
+    <app-icon name="back" size="lg" />
+  </button>
+
+  <span class="controls__count">Page {{ index() + 1 }} of {{ total() }}</span>
+
+  <button
+    type="button"
+    class="controls__turn controls__turn--next"
+    [disabled]="isLast()"
+    aria-label="Next page"
+    (click)="next()">
+    <app-icon name="forward" size="lg" />
+  </button>
+</nav>

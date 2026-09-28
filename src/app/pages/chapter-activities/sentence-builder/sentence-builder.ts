@@ -1,4 +1,5 @@
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { AudioService } from '../../../services/audio/audio';
 import { Button, Icon } from '../../../shared/components';
 
 /**
@@ -12,16 +13,21 @@ import { Button, Icon } from '../../../shared/components';
   styleUrl: './sentence-builder.scss',
 })
 export class SentenceBuilder {
+  private audio = inject(AudioService);
+
   /** Sentences taken from the chapter's story by the parent. */
   readonly sentences = input<string[]>([]);
   readonly alreadyDone = input<boolean>(false);
 
-  readonly completed = output<void>();
+  /** Emits how many mistakes the child made on the way, for the no-mistakes bonus. */
+  readonly completed = output<number>();
 
   readonly index = signal(0);
   readonly built = signal<string[]>([]);
   readonly checked = signal(false);
   readonly finished = signal(false);
+  /** Wrong checks this round; a clean run earns the bonus. */
+  readonly mistakes = signal(0);
 
   /** Up to three short-enough sentences make a round each. */
   readonly rounds = computed(() =>
@@ -60,12 +66,17 @@ export class SentenceBuilder {
     });
   }
 
+  readonly speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
   place(word: string): void {
     if (this.checked() && this.isCorrect()) {
       return;
     }
     this.built.update((words) => [...words, word]);
     this.checked.set(false);
+    // Each word is said as it is placed, so the child hears the sentence
+    // assembling rather than only seeing it.
+    this.speak(word);
   }
 
   undo(): void {
@@ -80,6 +91,47 @@ export class SentenceBuilder {
 
   check(): void {
     this.checked.set(true);
+
+    const correct = this.isCorrect();
+    this.audio.playResult(correct);
+
+    if (!correct) {
+      this.mistakes.update((count) => count + 1);
+    }
+
+    if (correct) {
+      // Reading the finished sentence back is the reward, and the reading.
+      this.speak(this.built().join(' '));
+    }
+  }
+
+  /** Hear the sentence as it stands, to work out what is still out of place. */
+  hearBuilt(): void {
+    const built = this.built();
+
+    if (built.length) {
+      this.speak(built.join(' '));
+    }
+  }
+
+  private speak(text: string): void {
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.8;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utterance);
+    } catch {
+      /* no speech synthesis on this device */
+    }
+  }
+
+  /** Build the sentences again from the start — for fun, once it has been won. */
+  restart(): void {
+    this.index.set(0);
+    this.reset();
+    this.mistakes.set(0);
+    this.finished.set(false);
   }
 
   next(): void {
@@ -88,7 +140,7 @@ export class SentenceBuilder {
       this.reset();
     } else {
       this.finished.set(true);
-      this.completed.emit();
+      this.completed.emit(this.mistakes());
     }
   }
 

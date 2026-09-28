@@ -1,8 +1,8 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { BookPayload, BookService } from '../../services/book/book';
+import { BookPayload, BookService, ClassProgress } from '../../services/book/book';
 import { UploadService } from '../../services/upload/upload';
 import { Book } from '../../models';
 import {
@@ -11,6 +11,7 @@ import {
   EmptyState,
   FormField,
   Modal,
+  ProgressBar,
   Spinner,
   Icon,
 } from '../../shared/components';
@@ -25,6 +26,7 @@ import {
     EmptyState,
     FormField,
     Modal,
+    ProgressBar,
     Spinner,
     Icon
   ],
@@ -34,10 +36,14 @@ import {
 export class Books implements OnInit {
   private bookService = inject(BookService);
   private uploadService = inject(UploadService);
+  private router = inject(Router);
 
   readonly coverUploading = signal(false);
 
   readonly books = signal<Book[]>([]);
+
+  /** How far this teacher's class has got through each book, keyed by book id. */
+  readonly classProgress = signal<Record<number, ClassProgress>>({});
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly isFormOpen = signal(false);
@@ -55,6 +61,7 @@ export class Books implements OnInit {
     this.bookService.list().subscribe({
       next: (response) => {
         this.books.set(response.data);
+        this.classProgress.set(response.progress ?? {});
         this.loading.set(false);
       },
       error: (response) => {
@@ -64,18 +71,20 @@ export class Books implements OnInit {
     });
   }
 
-  openCreateForm(): void {
-    this.editingBookId.set(null);
-    this.bookForm = this.emptyForm();
-    this.errorMessage.set(null);
-    this.isFormOpen.set(true);
+  /** The only way to make a book: upload it and let the pages be read. */
+  goToUpload(): void {
+    this.router.navigate(['/dashboard/upload']);
+  }
+
+  /** Class progress for one book, or nulls when nobody has it assigned. */
+  progressFor(book: Book): ClassProgress | null {
+    return this.classProgress()[book.id] ?? null;
   }
 
   openEditForm(book: Book): void {
     this.editingBookId.set(book.id);
     this.bookForm = {
       title: book.title,
-      type: book.type,
       description: book.description ?? '',
       cover_image_url: book.cover_image_url ?? '',
       reading_level: book.reading_level ?? '',
@@ -112,15 +121,16 @@ export class Books implements OnInit {
   }
 
   saveBook(): void {
+    // Only an existing book is ever saved here; new ones come from uploads.
+    const bookId = this.editingBookId();
+    if (!bookId) {
+      return;
+    }
+
     this.saving.set(true);
     this.errorMessage.set(null);
 
-    const bookId = this.editingBookId();
-    const request = bookId
-      ? this.bookService.update(bookId, this.bookForm)
-      : this.bookService.create(this.bookForm);
-
-    request.subscribe({
+    this.bookService.update(bookId, this.bookForm).subscribe({
       next: () => {
         this.saving.set(false);
         this.isFormOpen.set(false);
@@ -147,7 +157,6 @@ export class Books implements OnInit {
   private emptyForm(): BookPayload {
     return {
       title: '',
-      type: 'standard',
       description: '',
       cover_image_url: '',
       reading_level: '',

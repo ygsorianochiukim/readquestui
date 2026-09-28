@@ -17,7 +17,7 @@
   }
 
   &__wave {
-    display: inline-block;
+    vertical-align: middle;
     animation: wave 2.2s ease-in-out infinite;
     transform-origin: 70% 70%;
   }
@@ -98,7 +98,6 @@
   }
 
   &__buddy {
-    font-size: 3.4rem;
     filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.35));
     animation: buddy-bob 2.4s ease-in-out infinite;
   }
@@ -286,7 +285,7 @@
   box-shadow: var(--shadow-md);
   border-bottom: 4px solid rgba(0, 0, 0, 0.06);
 
-  &__icon { font-size: 1.7rem; }
+  &__icon { margin-bottom: 4px; }
 
   &__value {
     font-family: var(--font-display);
@@ -331,6 +330,9 @@
   }
 
   &__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-family: var(--font-display);
     font-size: var(--font-size-lg);
     color: var(--color-text);
@@ -366,7 +368,7 @@
     border-color: var(--color-primary);
   }
 
-  &__icon { font-size: 1.8rem; }
+  &__icon { margin-bottom: 6px; }
 
   &__title {
     font-weight: 700;
@@ -414,7 +416,7 @@
   text-align: center;
 }
 
-.treasure__icon { font-size: 2rem; }
+.treasure__icon { margin-bottom: 4px; }
 
 .treasure__name {
   font-size: 0.68rem;

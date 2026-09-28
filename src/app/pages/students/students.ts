@@ -65,6 +65,9 @@ export class Students implements OnInit {
   readonly rowActions: ActionMenuItem[] = [
     { key: 'progress', label: 'Progress' },
     { key: 'books', label: 'Assign Books' },
+    // The full report: score trend, the words this pupil keeps missing, and
+    // every recording. 'Scores' below is the quick look without leaving here.
+    { key: 'report', label: 'Reading Report' },
     { key: 'scores', label: 'Scores' },
     { key: 'rewards', label: 'Rewards' },
     { key: 'edit', label: 'Edit' },
@@ -107,6 +110,9 @@ export class Students implements OnInit {
         break;
       case 'books':
         this.openAssign(student);
+        break;
+      case 'report':
+        this.goReadingReport(student);
         break;
       case 'scores':
         this.openScores(student);
@@ -360,6 +366,10 @@ export class Students implements OnInit {
 
   goProgress(student: Student): void {
     this.router.navigate(['/dashboard/students', student.id, 'progress']);
+  }
+
+  goReadingReport(student: Student): void {
+    this.router.navigate(['/dashboard/students', student.id, 'reading-report']);
   }
 
   /** Upload a photo for the pupil being created or edited. */

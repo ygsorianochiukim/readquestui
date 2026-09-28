@@ -1,0 +1,71 @@
+<div class="map" [style.height.px]="height()">
+  <!-- The road. x runs 0–100 across, y is pixels down; only x stretches. -->
+  <svg
+    class="map__road"
+    aria-hidden="true"
+    preserveAspectRatio="none"
+    [attr.viewBox]="'0 0 100 ' + height()">
+    <path class="map__road-edge" [attr.d]="road()" />
+    <path class="map__road-bed" [attr.d]="road()" />
+    @if (travelled()) {
+      <path class="map__road-done" [attr.d]="travelled()" />
+    }
+    <path class="map__road-dash" [attr.d]="road()" />
+  </svg>
+
+  <!-- The finish line, above the last stop. -->
+  <div class="map__finish" aria-hidden="true" [style.left.%]="finish.x" [style.top.px]="finish.y">
+    <app-icon [name]="finishIcon()" size="xl" />
+  </div>
+
+  @for (p of placed(); track p.stop.id) {
+    <span
+      class="map__tree map__tree--{{ p.scenery }}"
+      aria-hidden="true"
+      [style.top.px]="p.y"></span>
+
+    <button
+      type="button"
+      class="tower tower--{{ p.stop.look }}"
+      [attr.data-stop]="p.stop.id"
+      [style.left.%]="p.x"
+      [style.top.px]="p.y"
+      [disabled]="p.stop.look === 'locked'"
+      [attr.aria-label]="p.stop.label || p.stop.title"
+      (click)="onPick(p.stop, $event)">
+      <span class="tower__body">
+        @if (p.stop.look === 'locked') {
+          <app-icon name="locked" size="lg" />
+        } @else {
+          {{ p.stop.number }}
+        }
+
+        @if (p.stop.look === 'completed') {
+          <span class="tower__stars" aria-hidden="true">
+            <app-icon name="star" size="sm" />
+            <app-icon name="star" size="sm" />
+            <app-icon name="star" size="sm" />
+          </span>
+        }
+
+        @if (p.stop.look === 'current') {
+          <span class="tower__flag" aria-hidden="true">
+            <app-icon name="map-pin" size="md" />
+          </span>
+        }
+      </span>
+
+      <span class="tower__card">
+        <span class="tower__name">{{ p.stop.title }}</span>
+
+        @if (p.stop.meta) {
+          <span class="tower__meta">{{ p.stop.meta }}</span>
+        }
+
+        @if (p.stop.percent != null && p.stop.look !== 'locked') {
+          <app-progress-bar [percent]="p.stop.percent" [showLabel]="false" />
+        }
+      </span>
+    </button>
+  }
+</div>

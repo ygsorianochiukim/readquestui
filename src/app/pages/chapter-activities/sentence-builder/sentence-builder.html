@@ -2,6 +2,11 @@
   <div class="sb sb--done">
     <app-icon class="sb__emoji" name="celebrate" size="xl" />
     <p class="sb__done-text">Sentence game complete!</p>
+    @if (total() > 0) {
+      <app-button variant="secondary" (clicked)="restart()">
+        <app-icon name="retry" size="sm" /> Play again
+      </app-button>
+    }
   </div>
 } @else if (total() === 0) {
   <p class="sb__empty">This chapter's story is too short for this game.</p>
@@ -45,6 +50,11 @@
         <app-button variant="secondary" [disabled]="built().length === 0" (clicked)="reset()">
           Clear
         </app-button>
+        @if (speechAvailable) {
+          <app-button variant="ghost" [disabled]="built().length === 0" (clicked)="hearBuilt()">
+            <app-icon name="listen" size="sm" /> Read it back
+          </app-button>
+        }
         <app-button [disabled]="remaining().length > 0" (clicked)="check()">Check</app-button>
       </div>
     }

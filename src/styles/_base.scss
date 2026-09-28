@@ -23,8 +23,11 @@ body {
   font-size: var(--font-size-base);
   color: var(--color-text);
   background: var(--color-background);
-  line-height: 1.5;
+  line-height: var(--line-height-base);
   -webkit-font-smoothing: antialiased;
+  // Stops iOS bumping text up a size when a tablet is turned sideways, which
+  // was pushing the reader's controls off screen.
+  text-size-adjust: 100%;
 }
 
 h1, h2, h3, h4 {
@@ -35,7 +38,19 @@ h1, h2, h3, h4 {
   font-weight: 400;
   letter-spacing: 0.01em;
   color: var(--color-text);
-  line-height: 1.3;
+  line-height: var(--line-height-tight);
+  // A long chapter title should break at a word, not mid-word, on a phone.
+  overflow-wrap: break-word;
+}
+
+// Every interactive control is at least a finger wide. This is the single
+// biggest thing standing between a six-year-old and the button they meant.
+button,
+[role='button'],
+a.button,
+input[type='checkbox'],
+input[type='radio'] {
+  touch-action: manipulation;
 }
 
 p {

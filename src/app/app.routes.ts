@@ -79,6 +79,28 @@ export const routes: Routes = [
           import('./pages/student-progress/student-progress').then((m) => m.StudentProgress),
       },
       {
+        path: 'students/:studentId/reading-report',
+        data: { title: 'Reading Report' },
+        loadComponent: () =>
+          import('./pages/student-reading-report/student-reading-report').then(
+            (m) => m.StudentReadingReport,
+          ),
+      },
+      {
+        path: 'read-aloud',
+        data: { title: 'Read-aloud Review' },
+        loadComponent: () =>
+          import('./pages/pronunciation-review/pronunciation-review').then(
+            (m) => m.PronunciationReview,
+          ),
+      },
+      {
+        path: 'upload',
+        data: { title: 'Upload Material' },
+        loadComponent: () =>
+          import('./pages/material-upload/material-upload').then((m) => m.MaterialUpload),
+      },
+      {
         path: 'profile',
         data: { title: 'My Profile' },
         loadComponent: () => import('./pages/profile/profile').then((m) => m.Profile),

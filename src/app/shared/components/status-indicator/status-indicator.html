@@ -1,0 +1,15 @@
+<span
+  class="status status--{{ status() }} status--{{ size() }}"
+  [class.status--compact]="compact()"
+  [attr.aria-label]="compact() ? text() : null"
+  [attr.role]="spinning() ? 'status' : null">
+  <app-icon
+    class="status__icon"
+    [class.status__icon--spinning]="spinning()"
+    [name]="preset().icon"
+    [size]="size()" />
+
+  @if (!compact()) {
+    <span class="status__text">{{ text() }}</span>
+  }
+</span>

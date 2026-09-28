@@ -1,6 +1,9 @@
 <div class="page-actions page-actions--split">
   <button type="button" class="back-link" (click)="goBack()"><app-icon name="back" size="sm" /> Back to chapters</button>
-  <app-button (clicked)="openCreateForm()">+ Add Question</app-button>
+  <app-button variant="secondary" [disabled]="regenerating()" (clicked)="regenerate()">
+    <app-icon name="retry" size="sm" />
+    {{ regenerating() ? 'Writing questions…' : 'Regenerate questions' }}
+  </app-button>
 </div>
 
 <app-alert [message]="errorMessage()" variant="error" />
@@ -11,15 +14,28 @@
   <app-empty-state
     icon="help"
     title="No quiz questions yet"
-    message="Add a question with a few choices and mark the correct answer.">
-    <app-button (clicked)="openCreateForm()">+ Add Question</app-button>
+    message="Questions are written for you from the chapter's scanned text.">
+    <app-button [disabled]="regenerating()" (clicked)="regenerate()">
+      <app-icon name="sparkles" size="sm" /> {{ regenerating() ? 'Writing questions…' : 'Write questions' }}
+    </app-button>
   </app-empty-state>
 } @else {
+  <!-- Generated, not typed: the teacher's job here is to check them. -->
+  <p class="question-intro">
+    These questions were written from the chapter's text. Correct or delete any
+    that do not fit. Regenerating writes a fresh set and keeps the ones you edited.
+  </p>
+
   <div class="question-list">
     @for (question of questions(); track question.id; let questionIndex = $index) {
       <article class="question-card">
         <div class="question-card__head">
-          <p class="question-card__text">{{ questionIndex + 1 }}. {{ question.question_text }}</p>
+          <p class="question-card__text">
+            {{ questionIndex + 1 }}. {{ question.question_text }}
+            @if (!question.is_generated) {
+              <span class="question-card__tag">Edited by you</span>
+            }
+          </p>
           <div class="question-card__actions">
             <app-button variant="ghost" (clicked)="openEditForm(question)">Edit</app-button>
             <app-button variant="ghost" (clicked)="deleteQuestion(question)">Delete</app-button>
@@ -41,10 +57,7 @@
   </div>
 }
 
-<app-modal
-  [open]="isFormOpen()"
-  [title]="editingQuestionId() ? 'Edit Question' : 'New Question'"
-  (closed)="closeForm()">
+<app-modal [open]="isFormOpen()" title="Edit Question" (closed)="closeForm()">
   <form class="question-form" (ngSubmit)="saveQuestion()">
     <app-form-field label="Question">
       <input name="question_text" [(ngModel)]="questionForm.question_text" required />
@@ -76,8 +89,6 @@
           </button>
         </div>
       }
-
-      <button type="button" class="choices__add" (click)="addChoice()">+ Add choice</button>
     </div>
   </form>
 

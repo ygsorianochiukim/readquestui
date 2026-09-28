@@ -12,7 +12,29 @@ export type { PageProgressNode, BookPageProgress } from './page-progress/page-pr
 export type { SystemLog, SystemLogPage } from './system-log/system-log.model';
 export type { Chapter } from './chapter/chapter.model';
 export type { QuizQuestion } from './quiz-question/quiz-question.model';
-export type { PronunciationAttempt } from './pronunciation-attempt/pronunciation-attempt.model';
+export type {
+  PronunciationAttempt,
+  PronunciationWord,
+  WordErrorType,
+  ReadingPace,
+  EarnedReward,
+  Celebrations,
+  AssessmentResponse,
+  ReadAloudSummary,
+} from './pronunciation-attempt/pronunciation-attempt.model';
+export type {
+  ReadingReport,
+  ReadingSummary,
+  ReadingTrendPoint,
+  MissedWord,
+  ReportAttempt,
+} from './reading-report/reading-report.model';
+export type {
+  IngestBatch,
+  IngestPreview,
+  IngestStatus,
+  SuggestedChapter,
+} from './ingest/ingest.model';
 export type {
   ProgressStatus,
   ChapterProgress,

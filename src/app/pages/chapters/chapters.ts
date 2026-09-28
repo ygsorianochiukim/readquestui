@@ -1,22 +1,34 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChapterPayload, ChapterService } from '../../services/chapter/chapter';
+import {
+  ChapterClassProgress,
+  ChapterPayload,
+  ChapterService,
+} from '../../services/chapter/chapter';
 import { BookService } from '../../services/book/book';
 import { NarrationService } from '../../services/narration/narration';
 import { UploadService } from '../../services/upload/upload';
-import { Chapter } from '../../models';
+import { Book, Chapter } from '../../models';
 import {
   Alert,
   Button,
   EmptyState,
   FormField,
   Modal,
+  ProgressBar,
   Spinner,
   Icon,
 } from '../../shared/components';
 
+/**
+ * A book's chapters. Every book has them — a reader's chapters carry story
+ * text and a quiz, a picture book's chapters group its pages.
+ *
+ * A chapter is added by uploading its printed pages, never by typing it. The
+ * only text a teacher touches is a fix to something the scanner misread.
+ */
 @Component({
   selector: 'app-chapters',
   imports: [
@@ -27,6 +39,7 @@ import {
     EmptyState,
     FormField,
     Modal,
+    ProgressBar,
     Spinner,
     Icon
   ],
@@ -42,9 +55,11 @@ export class Chapters implements OnInit {
 
   readonly imageUploading = signal(false);
 
-  // ---- Scanning a printed page into the story text (Azure Vision OCR) ----
-  readonly scanning = signal(false);
-  readonly scanMessage = signal<string | null>(null);
+  // ---- Adding a chapter by uploading its pages ----
+  readonly isUploadOpen = signal(false);
+  readonly uploading = signal(false);
+  readonly uploadFiles = signal<File[]>([]);
+  uploadTitle = '';
 
   // ---- Narration (Azure TTS) playback ----
   readonly activeNarrationId = signal<number | null>(null);
@@ -52,22 +67,36 @@ export class Chapters implements OnInit {
   private audio: HTMLAudioElement | null = null;
 
   readonly bookId = Number(this.route.snapshot.paramMap.get('bookId'));
-  readonly bookTitle = signal<string>('');
+  readonly book = signal<Book | null>(null);
   readonly chapters = signal<Chapter[]>([]);
+
+  /** A picture book: its chapters are pages, with no story text or quiz. */
+  readonly isPictureBook = computed(() => this.book()?.type === 'scanned');
+
+  /** How many of this teacher's pupils have finished each chapter, by id. */
+  readonly classProgress = signal<Record<number, ChapterClassProgress>>({});
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly isFormOpen = signal(false);
   readonly editingChapterId = signal<number | null>(null);
   readonly errorMessage = signal<string | null>(null);
+  readonly noticeMessage = signal<string | null>(null);
 
   chapterForm: ChapterPayload = this.emptyForm();
 
   ngOnInit(): void {
     this.loadChapters();
     this.bookService.get(this.bookId).subscribe({
-      next: (response) => this.bookTitle.set(response.data.title),
+      next: (response) => this.book.set(response.data),
       error: () => {},
     });
+  }
+
+  /** Class completion for one chapter, or null when nobody has the book. */
+  progressFor(chapter: Chapter): ChapterClassProgress | null {
+    const progress = this.classProgress()[chapter.id];
+
+    return progress && progress.assigned > 0 ? progress : null;
   }
 
   loadChapters(): void {
@@ -75,6 +104,7 @@ export class Chapters implements OnInit {
     this.chapterService.listForBook(this.bookId).subscribe({
       next: (response) => {
         this.chapters.set(response.data);
+        this.classProgress.set(response.progress ?? {});
         this.loading.set(false);
       },
       error: (response) => {
@@ -84,13 +114,62 @@ export class Chapters implements OnInit {
     });
   }
 
-  openCreateForm(): void {
-    this.editingChapterId.set(null);
-    const nextNumber = (this.chapters().at(-1)?.chapter_number ?? 0) + 1;
-    this.chapterForm = { ...this.emptyForm(), chapter_number: nextNumber };
+  // ============================================================
+  //  Adding a chapter
+  // ============================================================
+
+  openUploadForm(): void {
+    this.uploadFiles.set([]);
+    this.uploadTitle = '';
     this.errorMessage.set(null);
-    this.isFormOpen.set(true);
+    this.noticeMessage.set(null);
+    this.isUploadOpen.set(true);
   }
+
+  closeUploadForm(): void {
+    if (!this.uploading()) {
+      this.isUploadOpen.set(false);
+    }
+  }
+
+  onPagesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.uploadFiles.set(input.files ? Array.from(input.files) : []);
+    input.value = '';
+  }
+
+  /** Send the pages; the API reads them and builds the chapter (and quiz). */
+  uploadChapter(): void {
+    const files = this.uploadFiles();
+    if (files.length === 0) {
+      return;
+    }
+
+    this.uploading.set(true);
+    this.errorMessage.set(null);
+
+    this.chapterService.upload(this.bookId, files, this.uploadTitle.trim() || null).subscribe({
+      next: (response) => {
+        const chapter = response.data;
+        this.uploading.set(false);
+        this.isUploadOpen.set(false);
+        this.noticeMessage.set(
+          this.isPictureBook()
+            ? `Added "${chapter.title}".`
+            : `Added "${chapter.title}" with ${chapter.quiz_questions_count ?? 0} quiz questions written from its text. Check them on its Quiz page.`,
+        );
+        this.loadChapters();
+      },
+      error: (response: HttpErrorResponse) => {
+        this.uploading.set(false);
+        this.errorMessage.set(this.uploadError(response));
+      },
+    });
+  }
+
+  // ============================================================
+  //  Editing
+  // ============================================================
 
   openEditForm(chapter: Chapter): void {
     this.editingChapterId.set(chapter.id);
@@ -99,7 +178,6 @@ export class Chapters implements OnInit {
       title: chapter.title,
       story_text: chapter.story_text ?? '',
       image_url: chapter.image_url ?? '',
-      audio_url: chapter.audio_url ?? '',
     };
     this.errorMessage.set(null);
     this.isFormOpen.set(true);
@@ -110,15 +188,20 @@ export class Chapters implements OnInit {
   }
 
   saveChapter(): void {
+    const chapterId = this.editingChapterId();
+    if (!chapterId) {
+      return;
+    }
+
     this.saving.set(true);
     this.errorMessage.set(null);
 
-    const chapterId = this.editingChapterId();
-    const request = chapterId
-      ? this.chapterService.update(chapterId, this.chapterForm)
-      : this.chapterService.create(this.bookId, this.chapterForm);
+    // A picture book's chapter has no text of its own to send.
+    const payload: ChapterPayload = this.isPictureBook()
+      ? { chapter_number: this.chapterForm.chapter_number, title: this.chapterForm.title, image_url: this.chapterForm.image_url }
+      : this.chapterForm;
 
-    request.subscribe({
+    this.chapterService.update(chapterId, payload).subscribe({
       next: () => {
         this.saving.set(false);
         this.isFormOpen.set(false);
@@ -192,8 +275,10 @@ export class Chapters implements OnInit {
   }
 
   deleteChapter(chapter: Chapter): void {
-    const confirmed = confirm(`Delete Chapter ${chapter.chapter_number}: ${chapter.title}?`);
-    if (!confirmed) {
+    const message = this.isPictureBook()
+      ? `Delete Chapter ${chapter.chapter_number}: ${chapter.title}? Its pages will be removed too.`
+      : `Delete Chapter ${chapter.chapter_number}: ${chapter.title}?`;
+    if (!confirm(message)) {
       return;
     }
     this.chapterService.remove(chapter.id).subscribe({
@@ -223,61 +308,16 @@ export class Chapters implements OnInit {
     });
   }
 
-  /**
-   * Scan a photo of the printed page and append what it reads to the story
-   * text. Appending (rather than replacing) lets a teacher scan a chapter that
-   * runs across several printed pages, one after another.
-   */
-  onScanSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) {
-      return;
-    }
-
-    this.scanning.set(true);
-    this.scanMessage.set(null);
-    this.errorMessage.set(null);
-
-    this.uploadService.scanText(file).subscribe({
-      next: (result) => {
-        const scanned = result.data.text.trim();
-        this.scanning.set(false);
-
-        if (!scanned) {
-          this.scanMessage.set('No text found on that image. Try a clearer photo.');
-          return;
-        }
-
-        const existing = (this.chapterForm.story_text ?? '').trim();
-        this.chapterForm.story_text = existing ? `${existing}\n\n${scanned}` : scanned;
-        this.scanMessage.set(
-          `Added ${result.data.lines} line${result.data.lines === 1 ? '' : 's'} — please check the text and fix anything the scan got wrong.`,
-        );
-      },
-      error: (response: HttpErrorResponse) => {
-        this.scanning.set(false);
-        this.errorMessage.set(this.scanError(response));
-      },
-    });
-  }
-
-  private scanError(response: HttpErrorResponse): string {
-    // 502 and 503 already carry a specific, actionable message from the API.
-    if (response.status === 502 || response.status === 503) {
-      return response.error?.message ?? 'Could not read that image. Please try again.';
-    }
-
+  private uploadError(response: HttpErrorResponse): string {
     if (response.status === 413) {
-      return 'That image is too large to upload. Try a smaller photo of the page.';
+      return 'Those files are too large to upload. Try smaller photos of the pages.';
     }
 
     return this.readError(response);
   }
 
   private emptyForm(): ChapterPayload {
-    return { chapter_number: 1, title: '', story_text: '', image_url: '', audio_url: '' };
+    return { chapter_number: 1, title: '', story_text: '', image_url: '' };
   }
 
   private readError(response: HttpErrorResponse): string {

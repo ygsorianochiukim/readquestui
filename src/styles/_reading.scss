@@ -1,0 +1,196 @@
+// =============================================================
+//  Reading feedback
+//  The live listening panel and the try-this-word-again card.
+//  Global rather than component-scoped: the book reader and the chapter
+//  activities both show them, and a child should not be able to tell which
+//  screen they are on from how "we are listening" looks.
+// =============================================================
+
+.live {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    font-weight: 800;
+    color: var(--color-primary-dark);
+  }
+
+  // The one thing on screen that has to read as "we can hear you".
+  &__dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--color-danger);
+    animation: reading-live-pulse 1.2s ease-in-out infinite;
+  }
+
+  &__meters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: center;
+    margin-top: var(--space-3);
+  }
+
+  &__meter {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.2rem 0.7rem;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+
+    &--too_slow,
+    &--too_fast {
+      background: var(--color-warning-soft);
+      color: #9a5100;
+    }
+  }
+
+  &__transcript {
+    margin: var(--space-3) 0 0;
+    color: var(--color-text-muted);
+    font-style: italic;
+    // Held open so the panel does not jump as words arrive and leave.
+    min-height: 1.5em;
+  }
+}
+
+.retry {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+
+  &__label {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  &__word {
+    margin: var(--space-2) 0 var(--space-4);
+    font-size: clamp(2rem, 1.5rem + 2.5vw, 3rem);
+    font-weight: 800;
+    color: var(--color-text);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+@keyframes reading-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live__dot {
+    animation: none;
+  }
+}
+
+// =============================================================
+//  Live scores — small meters inside the listening panel
+//  Compact on purpose: the page is what the child should be looking at.
+// =============================================================
+.live-scores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+
+  &__item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'label value'
+      'track track';
+    align-items: center;
+    gap: 2px var(--space-2);
+  }
+
+  &__label {
+    grid-area: label;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
+
+  &__value {
+    grid-area: value;
+    color: var(--color-primary-dark);
+    font-size: var(--font-size-sm);
+    font-weight: 800;
+  }
+
+  &__track {
+    grid-area: track;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    overflow: hidden;
+  }
+
+  &__fill {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.4s ease;
+
+    &--great {
+      background: var(--color-success);
+    }
+
+    &--good {
+      background: var(--color-primary);
+    }
+
+    // Still growing: warm, not red.
+    &--grow {
+      background: var(--color-warning);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-scores__fill {
+    transition: none;
+  }
+}
+

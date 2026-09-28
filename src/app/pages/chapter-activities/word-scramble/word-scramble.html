@@ -2,6 +2,11 @@
   <div class="game game--done">
     <app-icon class="game__emoji" name="celebrate" size="xl" />
     <p class="game__done-text">Word game complete!</p>
+    @if (total() > 0) {
+      <app-button variant="secondary" (clicked)="restart()">
+        <app-icon name="retry" size="sm" /> Play again
+      </app-button>
+    }
   </div>
 } @else if (total() === 0) {
   <p class="game__empty">No words to play with in this chapter.</p>
@@ -16,7 +21,37 @@
       }
     </div>
 
-    <p class="game__hint">Hint: it starts with “{{ current().charAt(0) }}”</p>
+    <!-- The word's own sentence, with a gap where it belongs. Unscrambling a
+         word with nowhere to put it is a puzzle; this makes it reading. -->
+    @if (clue(); as sentence) {
+      <div class="game__clue">
+        <p class="game__clue-label">Where it comes from</p>
+        <p class="game__clue-text">{{ sentence }}</p>
+        <button type="button" class="game__link" (click)="hearClue()">
+          <app-icon name="listen" size="sm" /> Read it to me
+        </button>
+      </div>
+    }
+
+    <div class="game__helpers">
+      @if (canRevealMore()) {
+        <button type="button" class="game__link" (click)="revealLetter()">
+          <app-icon name="help" size="sm" /> Show me a letter
+        </button>
+      }
+
+      @if (speechAvailable) {
+        <button type="button" class="game__link" (click)="hearWord()">
+          <app-icon name="listen" size="sm" /> Say the word for me
+        </button>
+      }
+    </div>
+
+    @if (revealed()) {
+      <p class="game__reveal">It starts with “{{ revealed() }}”</p>
+    } @else {
+      <p class="game__hint">Hint: it starts with “{{ current().charAt(0) }}”</p>
+    }
 
     <input
       class="game__input"
@@ -24,19 +59,40 @@
       [(ngModel)]="guess"
       (keyup.enter)="check()"
       placeholder="Type the word"
-      autocomplete="off" />
+      autocomplete="off"
+      autocapitalize="none"
+      spellcheck="false" />
 
     @if (feedback() === 'correct') {
-      <p class="game__feedback game__feedback--ok"><app-icon name="check-circle" size="sm" /> Correct!</p>
+      <p class="game__feedback game__feedback--ok">
+        <app-icon name="check-circle" size="sm" /> Correct! The word is “{{ current() }}”.
+      </p>
       <app-button (clicked)="nextWord()">
         {{ index() < total() - 1 ? 'Next word' : 'Finish game' }}
-      <app-icon [name]="index() < total() - 1 ? 'forward' : 'celebrate'" size="sm" />
+        <app-icon [name]="index() < total() - 1 ? 'forward' : 'celebrate'" size="sm" />
       </app-button>
     } @else {
       @if (feedback() === 'wrong') {
-        <p class="game__feedback game__feedback--no"><app-icon name="alert" size="sm" /> Not quite — try again!</p>
+        <p class="game__feedback game__feedback--no">
+          <app-icon name="alert" size="sm" /> Not quite — try again!
+        </p>
       }
-      <app-button (clicked)="check()" [disabled]="!guess().trim()">Check</app-button>
+
+      <div class="game__actions">
+        <app-button (clicked)="check()" [disabled]="!guess().trim()">Check</app-button>
+
+        <!-- Answering out loud, for a child who can say the word but cannot
+             yet spell it. -->
+        @if (speechInputAvailable) {
+          @if (listening()) {
+            <app-status-indicator status="loading" label="Listening…" />
+          } @else {
+            <app-button variant="secondary" (clicked)="answerAloud()">
+              <app-icon name="mic" size="sm" /> Say it instead
+            </app-button>
+          }
+        }
+      </div>
     }
   </div>
 }
