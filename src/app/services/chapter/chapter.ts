@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, from, switchMap } from 'rxjs';
+import { ThemeKey } from '../../models/theme/theme.model';
 import { environment } from '../../../environments/environment';
 import { ApiResponse, Chapter } from '../../models';
 import { prepareForScan } from '../upload/image-prep';
@@ -25,6 +26,8 @@ export interface ChapterPayload {
   title: string;
   story_text?: string | null;
   image_url?: string | null;
+  /** Null: read in the book's theme. */
+  theme?: ThemeKey | null;
 }
 
 @Injectable({ providedIn: 'root' })

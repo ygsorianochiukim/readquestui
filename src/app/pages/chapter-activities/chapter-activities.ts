@@ -1,7 +1,7 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of, Subscription } from 'rxjs';
 import { ProgressService } from '../../services/progress/progress';
 import { ReaderService } from '../../services/reader/reader';
 import { NarrationService } from '../../services/narration/narration';
@@ -10,6 +10,8 @@ import { LiveReadingService } from '../../services/live-reading/live-reading';
 import { LiveWord } from '../../services/live-reading/word-alignment';
 import { AudioService } from '../../services/audio/audio';
 import { CelebrationService } from '../../services/celebration/celebration';
+import { CheerService } from '../../services/cheer/cheer';
+import { ThemeService } from '../../services/theme/theme';
 import { PronunciationService } from '../../services/pronunciation/pronunciation';
 import {
   BookPage,
@@ -25,9 +27,10 @@ import { GameType, GameWinRecord } from '../../models/progress/progress.model';
 import {
   Alert,
   Button,
-  FlipBook,
-  FlipPage,
   Icon,
+  LevelMap,
+  LevelStop,
+  LevelStopPick,
   LiveTranscript,
   ReadingText,
   ScoreModal,
@@ -39,7 +42,11 @@ import { WordScramble, WordChallenge } from './word-scramble/word-scramble';
 import { MissingWord } from './missing-word/missing-word';
 import { SentenceBuilder } from './sentence-builder/sentence-builder';
 
-type StepKey = 'story' | 'readaloud' | 'game' | 'quiz';
+/**
+ * A chapter is read a page at a time — picked from the chapter's own page map,
+ * listened to, and read aloud — and then played and quizzed on as a whole.
+ */
+type StepKey = 'pages' | 'game' | 'quiz';
 
 /** One of the three mini-games every chapter offers. */
 type GameKind = GameType;
@@ -65,13 +72,21 @@ interface QuizFeedback {
 /** A chapter's heading line, e.g. "Chapter 2" or "Chapter 2: The River". */
 const CHAPTER_HEADING = /^chapter\s+[\w-]+\b.{0,60}$/i;
 
-/** One paragraph of the chapter, read aloud and scored on its own. */
+/**
+ * One page of the chapter as the child sees it: a paragraph of a scan, read,
+ * heard and scored on its own. A whole chapter at once is too much for a young
+ * reader; a few lines at a time is not.
+ */
 interface ReadingPage {
   key: string;
   bookPageId: number;
   /** Its place on its page, counted the way the server counts it. */
   paragraphIndex: number;
   text: string;
+  /** The scan's picture(s), shown on the first page cut from that scan. */
+  images: string[];
+  /** A "Chapter 2" line from the top of the scan, shown above its first page. */
+  heading: string | null;
 }
 
 const PRAISE = ['Great job!', 'You got it!', 'Super reading!', 'Well done!', 'That is right!'];
@@ -86,7 +101,7 @@ const ENCOURAGE = [
   imports: [
     Alert,
     Button,
-    FlipBook,
+    LevelMap,
     Spinner,
     WordScramble,
     MissingWord,
@@ -109,6 +124,8 @@ export class ChapterActivities implements OnInit, OnDestroy {
   private live = inject(LiveReadingService);
   private audioCues = inject(AudioService);
   private celebrationService = inject(CelebrationService);
+  private cheers = inject(CheerService);
+  private themes = inject(ThemeService);
   private pronunciationService = inject(PronunciationService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -126,10 +143,6 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly chapterNumber = signal(0);
   readonly storyText = signal<string | null>(null);
   readonly imageUrl = signal<string | null>(null);
-  /** The chapter's own pages, in order, for the flip book. Empty for a text-only chapter. */
-  readonly pages = signal<FlipPage[]>([]);
-  /** Whether the child has turned to the chapter's last page. */
-  readonly onLastPage = signal(false);
 
   // Progress flags for this chapter.
   readonly storyRead = signal(false);
@@ -138,11 +151,15 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly quizPassed = signal(false);
   readonly completed = signal(false);
 
-  readonly activeStep = signal<StepKey>('story');
+  readonly activeStep = signal<StepKey>('pages');
 
   readonly steps = computed(() => [
-    { key: 'story' as const, label: 'Story', icon: 'book', done: this.storyRead() },
-    { key: 'readaloud' as const, label: 'Read Aloud', icon: 'mic', done: this.pronunciationPassed() },
+    {
+      key: 'pages' as const,
+      label: 'Pages',
+      icon: 'book',
+      done: this.storyRead() && this.pronunciationPassed(),
+    },
     { key: 'game' as const, label: 'Game', icon: 'game', done: this.gameCompleted() },
     { key: 'quiz' as const, label: 'Quiz', icon: 'quiz', done: this.quizPassed() },
   ]);
@@ -221,13 +238,15 @@ export class ChapterActivities implements OnInit, OnDestroy {
   private audio: HTMLAudioElement | null = null;
   /** Bumped whenever narration stops or moves page, so a late answer is ignored. */
   private narrationRun = 0;
-  private readonly flipBook = viewChild(FlipBook);
-  /** The flip-book page open now, counted from 0. */
-  readonly flipIndex = signal(0);
 
-  // Read-aloud, page by page: the same one-paragraph pages as the flip book.
+  // The chapter's pages: picked from the page map, then read one at a time.
   readonly readingPages = signal<ReadingPage[]>([]);
   readonly readIndex = signal(0);
+  /** Whether a page is open, or the page map is showing. */
+  readonly pageOpen = signal(false);
+  /** Page scores have loaded, so the page map knows which pages are open. */
+  readonly scoresLoaded = signal(false);
+  private queryParams: Subscription | null = null;
   /** Best score so far on each page, keyed `pageId:paragraph`; null until read. */
   readonly pageScores = signal<Record<string, number | null>>({});
   readonly readAloudSummary = signal<ReadAloudSummary | null>(null);
@@ -238,6 +257,49 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly readNoun = computed(() => (this.readByPage() ? 'page' : 'story'));
   readonly currentReadPage = computed(() => this.readingPages()[this.readIndex()] ?? null);
   readonly isLastReadPage = computed(() => this.readIndex() >= this.readingPages().length - 1);
+
+  /** The first page not read aloud yet; past the end once every page has been. */
+  readonly firstUnread = computed(() => {
+    const scores = this.pageScores();
+    const index = this.readingPages().findIndex((page) => scores[page.key] == null);
+
+    return index < 0 ? this.readingPages().length : index;
+  });
+
+  /** The next page is open once this one has been read. */
+  readonly canTurnNext = computed(
+    () => !this.isLastReadPage() && this.readIndex() + 1 <= this.firstUnread(),
+  );
+
+  readonly allPagesRead = computed(
+    () => this.readingPages().length > 0 && this.firstUnread() >= this.readingPages().length,
+  );
+
+  /**
+   * The chapter's pages as stops on its own level map — the same map as the
+   * books and chapters, one step further in. Pages open in order: every page
+   * read so far, and the next one.
+   */
+  readonly pageStops = computed<LevelStop[]>(() => {
+    const next = this.firstUnread();
+
+    return this.readingPages().map((page, index) => {
+      const score = this.scoreOf(page);
+      const look =
+        score !== null ? 'completed' : index === next ? 'current' : index < next ? 'available' : 'locked';
+
+      return {
+        id: index + 1,
+        number: index + 1,
+        title: `Page ${index + 1}`,
+        look,
+        meta: score !== null ? `Best score ${score}` : look === 'current' ? 'Up next' : undefined,
+        label:
+          `Page ${index + 1}` +
+          (score !== null ? `, best score ${score}` : look === 'locked' ? ', locked' : ', not read yet'),
+      };
+    });
+  });
 
   /** The words being read aloud right now: this page's, or the whole story's. */
   readonly readText = computed(() =>
@@ -333,6 +395,19 @@ export class ChapterActivities implements OnInit, OnDestroy {
   /** The book's level, so the live pace meter uses the right words-a-minute band. */
   private readonly readingLevel = signal<string | null>(null);
 
+  constructor() {
+    // The background music plays on through the chapter, but not into the
+    // microphone: a tune under the recording muddies the score.
+    effect(() => {
+      const micOpen = ['connecting', 'recording'].includes(this.recordingState());
+      if (micOpen) {
+        this.audioCues.duckForRecording();
+      } else {
+        this.audioCues.restoreAfterRecording();
+      }
+    });
+  }
+
   ngOnInit(): void {
     forkJoin({
       reader: this.readerService.book(this.bookId),
@@ -357,11 +432,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
         const pages = (reader.data.pages ?? [])
           .filter((page) => page.chapter_id === this.chapterId)
           .sort((a, b) => a.page_number - b.page_number);
-        const flipPages = this.paragraphPages(pages);
-        this.pages.set(flipPages);
-        this.onLastPage.set(flipPages.length <= 1);
         this.readingPages.set(this.readingPagesOf(pages));
-        this.loadReadAloudProgress();
 
         // Games and read-aloud need the chapter's words. Fall back to the pages'
         // own text when the chapter has none of its own.
@@ -372,10 +443,13 @@ export class ChapterActivities implements OnInit, OnDestroy {
         this.storyText.set(chapter?.story_text || pagesText || null);
         this.imageUrl.set(chapter?.image_url ?? null);
         this.readingLevel.set(progress.data.reading_level ?? null);
+        this.themes.use(progress.data.theme, chapter?.theme ?? node?.theme);
         this.applyProgress(node?.progress ?? null);
         this.quizQuestions.set(quiz.data);
         this.gameWins.set(games.data ?? []);
         this.loading.set(false);
+
+        this.loadReadAloudProgress();
       },
       error: (response: HttpErrorResponse) => {
         this.errorMessage.set(response.error?.message ?? 'Could not open this chapter.');
@@ -385,98 +459,105 @@ export class ChapterActivities implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.queryParams?.unsubscribe();
     this.stopNarration();
+    this.themes.clear();
+    // Leaving mid-reading must not leave the music ducked on the next screen.
+    this.audioCues.restoreAfterRecording();
     // The microphone must not stay open when the child navigates away.
     void this.live.stop();
   }
 
   /**
-   * One flip-book page per paragraph, so a young reader faces a few lines at a
-   * time rather than a wall of words. A "Chapter 2" line is not a paragraph of
-   * its own: it heads the page that follows it. A scan's picture stays with
-   * its page's first paragraph.
+   * The chapter cut into pages of one paragraph each, so a young reader faces
+   * a few lines at a time rather than a wall of words. A "Chapter 2" line is
+   * not a page of its own: it heads the page that follows it. A scan's picture
+   * goes with its first paragraph — or, on a scan with no words, with the next
+   * page that has some.
    */
-  private paragraphPages(pages: BookPage[]): FlipPage[] {
-    const flip: FlipPage[] = [];
+  private readingPagesOf(pages: BookPage[]): ReadingPage[] {
+    const result: ReadingPage[] = [];
+    let images: string[] = [];
+    let heading: string | null = null;
 
     for (const page of pages) {
       const paragraphs = (page.text ?? '')
         .split(/\r?\n/)
         .map((line) => line.trim())
         .filter(Boolean);
-      let heading: string | null = null;
-      let imageUrl = page.image_url;
 
+      if (page.image_url) {
+        images.push(page.image_url);
+      }
       if (paragraphs.length && CHAPTER_HEADING.test(paragraphs[0])) {
-        heading = paragraphs.shift() ?? null;
+        heading = paragraphs.shift() ?? heading;
       }
 
-      // A picture with no words is still a page.
-      if (!paragraphs.length) {
-        if (imageUrl || heading) {
-          flip.push({ id: `${page.id}`, imageUrl, heading });
-        }
-        continue;
-      }
-
-      paragraphs.forEach((text, index) => {
-        flip.push({
-          id: `${page.id}-${index}`,
-          imageUrl,
-          heading,
+      paragraphs.forEach((text, paragraphIndex) => {
+        result.push({
+          key: `${page.id}:${paragraphIndex}`,
+          bookPageId: page.id,
+          paragraphIndex,
           text,
-          narration: { bookPageId: page.id, paragraphIndex: index },
+          images,
+          heading,
         });
-        imageUrl = null;
+        images = [];
         heading = null;
       });
     }
 
-    return flip;
+    // A picture after the last words still belongs to the chapter.
+    if (images.length && result.length) {
+      const last = result[result.length - 1];
+      last.images = [...last.images, ...images];
+    }
+
+    return result;
   }
 
-  /** Each paragraph of the chapter, to read aloud one at a time — cut like the flip book's. */
-  private readingPagesOf(pages: BookPage[]): ReadingPage[] {
-    return pages.flatMap((page) => {
-      const paragraphs = (page.text ?? '')
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean);
-
-      if (paragraphs.length && CHAPTER_HEADING.test(paragraphs[0])) {
-        paragraphs.shift();
-      }
-
-      return paragraphs.map((text, paragraphIndex) => ({
-        key: `${page.id}:${paragraphIndex}`,
-        bookPageId: page.id,
-        paragraphIndex,
-        text,
-      }));
-    });
-  }
-
-  /** Which pages were already read aloud, so a child picks up where they stopped. */
+  /** Which pages were already read aloud, so the page map shows where the child stopped. */
   private loadReadAloudProgress(): void {
     if (!this.readByPage()) {
+      this.scoresLoaded.set(true);
+      this.watchPageParam();
       return;
     }
 
     this.progressService.readAloud(this.chapterId).subscribe({
       next: (response) => {
         this.applyReadAloud(response.data);
-        const firstUnread = this.readingPages().findIndex(
-          (page) => this.pageScores()[page.key] == null,
-        );
-        this.readIndex.set(Math.max(firstUnread, 0));
-
-        // Already on the step: show the page we just moved to, not the first one.
-        if (this.activeStep() === 'readaloud' && this.recordingState() === 'idle' && !this.result()) {
-          this.layOutReadText();
-        }
+        this.scoresLoaded.set(true);
+        this.watchPageParam();
       },
       // Progress is a nicety here; reading still works without it.
-      error: () => undefined,
+      error: () => {
+        this.scoresLoaded.set(true);
+        this.watchPageParam();
+      },
+    });
+  }
+
+  /**
+   * The open page lives in the address (`?page=3`), so the back button closes
+   * a page and returns to the page map, as a child expects.
+   */
+  private watchPageParam(): void {
+    this.queryParams?.unsubscribe();
+    this.queryParams = this.route.queryParamMap.subscribe((params) => {
+      const page = Number(params.get('page'));
+
+      if (!this.readByPage()) {
+        // A chapter with no pages is one page: its whole story.
+        this.showPage(0);
+        return;
+      }
+
+      if (page >= 1) {
+        this.showPage(page - 1);
+      } else {
+        this.closePage();
+      }
     });
   }
 
@@ -498,17 +579,77 @@ export class ChapterActivities implements OnInit, OnDestroy {
     return this.pageScores()[page.key] ?? null;
   }
 
-  /** Move to another page of the read-aloud and put its words on screen. */
-  goToReadPage(index: number): void {
-    if (index < 0 || index >= this.readingPages().length) {
+  /** A page picked on the page map. */
+  pickPage(pick: LevelStopPick): void {
+    this.audioCues.play('tap', 0.4);
+    this.openPage(pick.stop.id - 1);
+  }
+
+  /** Open a page of the chapter (counted from 0), through the address bar. */
+  openPage(index: number): void {
+    if (index < 0 || index >= this.readingPages().length || index > this.firstUnread()) {
       return;
     }
     if (this.isBusy() || this.recordingState() === 'recording' || this.retryTarget()) {
       return;
     }
 
-    this.readIndex.set(index);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { page: index + 1 },
+      // Turning from one page to the next is not a new place to go back to.
+      replaceUrl: this.pageOpen(),
+    });
+  }
+
+  /** Back to the page map. */
+  backToPages(): void {
+    if (this.isBusy() || this.recordingState() === 'recording') {
+      return;
+    }
+
+    this.router.navigate([], { relativeTo: this.route, queryParams: { page: null } });
+  }
+
+  /** Put one page on screen, ready to hear and read aloud. */
+  private showPage(index: number): void {
+    const pages = this.readingPages();
+    // A page further on than the child has reached (a typed address, say)
+    // opens the first one they have not read.
+    const target = pages.length ? Math.min(index, this.firstUnread(), pages.length - 1) : 0;
+
+    this.stopReading();
+    this.activeStep.set('pages');
+    this.readIndex.set(target);
+    this.pageOpen.set(true);
     this.layOutReadText();
+
+    // Reaching the last page is reading the chapter through.
+    if (!this.storyRead() && (!this.readByPage() || target === pages.length - 1)) {
+      this.markStoryRead();
+    }
+  }
+
+  private closePage(): void {
+    this.stopReading();
+    this.pageOpen.set(false);
+    this.result.set(null);
+    this.showScore.set(false);
+  }
+
+  /** Stop the voice and the microphone before the words on screen change. */
+  private stopReading(): void {
+    this.stopNarration();
+
+    if (this.retryTarget()) {
+      void this.live.abandonWordRetry();
+      this.retryTarget.set(null);
+    }
+    if (this.recordingState() !== 'idle') {
+      void this.live.stop();
+      void this.recorder.stop().catch(() => undefined);
+      this.recordingState.set('idle');
+    }
   }
 
   /** Show the words about to be read, uncoloured, before recording starts. */
@@ -518,114 +659,70 @@ export class ChapterActivities implements OnInit, OnDestroy {
     this.live.prepare(this.readText() ?? '', this.readingLevel());
   }
 
-  private applyProgress(progress: ChapterProgress | null): void {
+  /** Apply the chapter's progress; true when this is what finished the chapter. */
+  private applyProgress(progress: ChapterProgress | null): boolean {
+    const wasCompleted = this.completed();
+
     this.storyRead.set(progress?.story_read ?? false);
     this.pronunciationPassed.set(progress?.pronunciation_passed ?? false);
     this.gameCompleted.set(progress?.game_completed ?? false);
     this.quizPassed.set(progress?.quiz_passed ?? false);
     this.completed.set(progress?.status === 'completed');
+
+    // Only a change seen on this screen is cheered, not the state it opened in.
+    const justCompleted = !this.loading() && !wasCompleted && this.completed();
+    if (justCompleted) {
+      this.cheers.cheer('congrats', 'Congrats! Chapter complete!');
+    }
+
+    return justCompleted;
   }
 
   go(step: StepKey): void {
     this.stopNarration();
     this.activeStep.set(step);
 
-    // Put the page's words up straight away, so the child sees what to read.
-    if (step === 'readaloud' && this.recordingState() === 'idle' && !this.retryTarget()) {
-      this.layOutReadText();
+    // Leaving the pages closes the open page, so coming back shows the map.
+    if (step !== 'pages' && this.pageOpen()) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { page: null },
+        replaceUrl: true,
+      });
     }
   }
 
-  // ---- Story ----
+  // ---- Pages ----
   markStoryRead(): void {
     this.progressService.markStoryRead(this.chapterId).subscribe({
-      next: (response) => {
-        this.applyProgress(response.data);
-        this.go('readaloud');
-      },
+      next: (response) => this.applyProgress(response.data),
     });
   }
 
+  /** Read the open page to the child — this page only, not the whole chapter. */
   toggleNarration(): void {
     if (this.narrating()) {
       this.stopNarration();
       return;
     }
 
-    // A chapter with pages is read to the child page by page, like a
-    // read-along book — each page takes a second, not the whole chapter's minute.
-    if (this.pages().length) {
-      this.errorMessage.set(null);
-      this.narrating.set(true);
-      this.playFlipPage(this.flipIndex());
-      return;
-    }
+    const page = this.readByPage() ? this.currentReadPage() : null;
 
-    const text = this.storyText();
-    if (!text) {
+    if (!page && !this.storyText()) {
       this.errorMessage.set('This chapter has no text to read aloud yet.');
       return;
     }
 
+    const run = ++this.narrationRun;
     this.errorMessage.set(null);
     this.narrating.set(true);
     this.narrationLoading.set(true);
 
-    this.narrationService.getNarration(this.chapterId).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        this.audio = audio;
-        audio.onended = () => {
-          URL.revokeObjectURL(url);
-          this.narrating.set(false);
-        };
-        audio.play();
-        this.narrationLoading.set(false);
-      },
-      error: (response: HttpErrorResponse) => {
-        this.narrating.set(false);
-        this.narrationLoading.set(false);
-        this.errorMessage.set(this.narrationError(response.status));
-      },
-    });
-  }
+    const request = page
+      ? this.narrationService.getPageNarration(page.bookPageId, page.paragraphIndex)
+      : this.narrationService.getNarration(this.chapterId);
 
-  stopNarration(): void {
-    this.narrationRun++;
-    this.stopAudio();
-    this.narrating.set(false);
-    this.narrationLoading.set(false);
-  }
-
-  /** The flip book turned — by hand, or by the read-along moving on. */
-  onFlipPage(index: number): void {
-    this.flipIndex.set(index);
-    this.onLastPage.set(index === this.pages().length - 1);
-
-    if (this.narrating()) {
-      this.playFlipPage(index);
-    }
-  }
-
-  /**
-   * Read one flip-book page out loud, then turn to the next and carry on
-   * until the end of the chapter. A page with no words (a picture, a
-   * heading) is simply turned past.
-   */
-  private playFlipPage(index: number): void {
-    const run = ++this.narrationRun;
-    const source = this.pages()[index]?.narration;
-    this.stopAudio();
-
-    if (!source) {
-      this.afterFlipPage(index, run);
-      return;
-    }
-
-    this.narrationLoading.set(true);
-
-    this.narrationService.getPageNarration(source.bookPageId, source.paragraphIndex).subscribe({
+    request.subscribe({
       next: (blob) => {
         // The child may have stopped, or turned the page, while this loaded.
         if (run !== this.narrationRun || !this.narrating()) {
@@ -637,7 +734,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
         this.audio = audio;
         audio.onended = () => {
           URL.revokeObjectURL(url);
-          this.afterFlipPage(index, run);
+          this.narrating.set(false);
         };
         void audio.play();
         this.narrationLoading.set(false);
@@ -652,23 +749,11 @@ export class ChapterActivities implements OnInit, OnDestroy {
     });
   }
 
-  /** A page has been read: turn to the next one, or stop at the end. */
-  private afterFlipPage(index: number, run: number): void {
-    if (run !== this.narrationRun || !this.narrating()) {
-      return;
-    }
-
-    if (index >= this.pages().length - 1) {
-      this.stopNarration();
-      return;
-    }
-
-    // A breath between pages; turning the page starts the next one reading.
-    setTimeout(() => {
-      if (run === this.narrationRun && this.narrating()) {
-        this.flipBook()?.next();
-      }
-    }, 600);
+  stopNarration(): void {
+    this.narrationRun++;
+    this.stopAudio();
+    this.narrating.set(false);
+    this.narrationLoading.set(false);
   }
 
   private stopAudio(): void {
@@ -759,8 +844,23 @@ export class ChapterActivities implements OnInit, OnDestroy {
       ? { chapterId: this.chapterId, bookPageId: page.bookPageId, paragraphIndex: page.paragraphIndex }
       : { chapterId: this.chapterId };
 
+    const wasPassed = this.pronunciationPassed();
+
     this.pronunciationService.assess(audio, target).subscribe({
       next: (response) => {
+        // The child went back to the page map while this was being scored:
+        // keep the score, but do not pop it up over a different screen.
+        const stillHere = this.pageOpen() && (!page || this.currentReadPage()?.key === page.key);
+
+        // Leaving already set the microphone to idle, and the child may be
+        // recording the next page by now, so leave the state alone.
+        if (!stillHere) {
+          if (response.meta.read_aloud) {
+            this.applyReadAloud(response.meta.read_aloud);
+          }
+          return;
+        }
+
         this.result.set(response.data);
         this.celebrations.set(response.celebrations);
         this.paceHint.set(response.meta.pace_hint);
@@ -775,9 +875,17 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
         this.recordingState.set('idle');
         this.showScore.set(true);
+
+        if (!wasPassed && this.pronunciationPassed() && this.readByPage()) {
+          this.cheers.cheer('congrats', 'Congrats! You read every page!');
+        } else {
+          this.cheers.forScore(response.data.effective_score, this.passMark);
+        }
       },
       error: (response: HttpErrorResponse) => {
-        this.recordingState.set('idle');
+        if (this.recordingState() === 'assessing') {
+          this.recordingState.set('idle');
+        }
         this.errorMessage.set(this.assessError(response.status));
       },
     });
@@ -893,19 +1001,32 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
     // Page by page, "next" turns to the next page until the last one.
     if (this.readByPage() && !this.isLastReadPage()) {
-      this.goToReadPage(this.readIndex() + 1);
+      this.openPage(this.readIndex() + 1);
       return;
     }
 
     if (this.pronunciationPassed()) {
       this.go('game');
+      return;
+    }
+
+    // The last page, but the chapter needs more: back to the map to pick a
+    // page to read again.
+    if (this.readByPage()) {
+      this.backToPages();
     }
   }
 
   /** The score popup's forward button, which says where it goes. */
-  readonly scoreNextLabel = computed(() =>
-    this.readByPage() && !this.isLastReadPage() ? 'Next page' : 'Keep going',
-  );
+  readonly scoreNextLabel = computed(() => {
+    if (this.readByPage() && !this.isLastReadPage()) {
+      return 'Next page';
+    }
+    if (this.pronunciationPassed()) {
+      return 'Play a game';
+    }
+    return this.readByPage() ? 'Back to the pages' : 'Keep going';
+  });
 
   // ---- Game ----
   pickGame(kind: GameKind): void {
@@ -926,7 +1047,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
     this.progressService.completeGame(this.chapterId, kind, mistakes).subscribe({
       next: (response) => {
-        this.applyProgress(response.data);
+        const finishedChapter = this.applyProgress(response.data);
 
         const game = response.game;
         if (game) {
@@ -947,6 +1068,11 @@ export class ChapterActivities implements OnInit, OnDestroy {
             // Replays are for fun; say so, so the missing points are not a surprise.
             this.gameMessage.set('You already won this one. Try another game for more stars!');
           }
+        }
+
+        // Finishing the chapter has its own, bigger cheer.
+        if (!finishedChapter) {
+          this.cheers.cheer('great', game?.perfect ? 'Perfect! Great job!' : undefined);
         }
 
         // Winning the game can finish the chapter, which can earn a badge.
@@ -976,6 +1102,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
           message: this.pickMessage(correct ? PRAISE : ENCOURAGE),
         });
         this.audioCues.playResult(correct);
+        this.cheers.cheer(correct ? 'great' : 'try-again', correct ? undefined : 'Good try!');
         this.quizChecking.set(false);
       },
       error: () => {
@@ -1034,8 +1161,16 @@ export class ChapterActivities implements OnInit, OnDestroy {
           review: result.review ?? [],
         });
         this.quizSubmitting.set(false);
-        this.applyProgress(result.progress);
+        const finishedChapter = this.applyProgress(result.progress);
         this.audioCues.playResult(result.passed);
+
+        if (!finishedChapter) {
+          if (result.passed) {
+            this.cheers.cheer('congrats', 'Congrats! You passed the quiz!');
+          } else {
+            this.cheers.cheer('try-again', 'Try the quiz again!');
+          }
+        }
         // A passed quiz can finish the chapter — and the book behind it.
         this.celebrationService.push(response.celebrations);
       },

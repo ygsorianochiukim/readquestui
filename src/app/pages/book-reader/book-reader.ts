@@ -21,6 +21,8 @@ import {
   stateFor,
 } from '../../services/live-reading/word-alignment';
 import { AudioService } from '../../services/audio/audio';
+import { ThemeService } from '../../services/theme/theme';
+import { CheerService } from '../../services/cheer/cheer';
 import { CelebrationService } from '../../services/celebration/celebration';
 import { PronunciationService } from '../../services/pronunciation/pronunciation';
 import { ProgressService } from '../../services/progress/progress';
@@ -78,6 +80,8 @@ type ReadingState = 'idle' | 'connecting' | 'listening' | 'assessing' | 'retryin
 })
 export class BookReader implements OnInit, OnDestroy {
   private readerService = inject(ReaderService);
+  private themes = inject(ThemeService);
+  private cheers = inject(CheerService);
   private narrationService = inject(NarrationService);
   private recorder = inject(RecorderService);
   private live = inject(LiveReadingService);
@@ -116,6 +120,17 @@ export class BookReader implements OnInit, OnDestroy {
 
   readonly isPageBook = computed(() => this.book()?.type === 'scanned');
   readonly bookFinished = computed(() => this.pageProgress()?.is_completed ?? false);
+
+  /**
+   * The page dots under the book: this chapter's pages when one was picked,
+   * otherwise the whole book's. Tapping one opens that page.
+   */
+  readonly trackPages = computed(() => {
+    const pages = this.pageProgress()?.pages ?? [];
+    const open = new Set(this.leaves().map((leaf) => leaf.id));
+
+    return pages.filter((page) => open.has(page.id));
+  });
 
   readonly narrating = signal(false);
   readonly narrationLoading = signal(false);
@@ -223,6 +238,8 @@ export class BookReader implements OnInit, OnDestroy {
       next: (response) => {
         const book = response.data;
         this.book.set(book);
+        const chapter = (book.chapters ?? []).find((entry) => entry.id === this.chapterId);
+        this.themes.use(book.theme, chapter?.theme);
         this.leaves.set(this.buildLeaves(book));
         this.loading.set(false);
         this.layOutPage();
@@ -236,13 +253,11 @@ export class BookReader implements OnInit, OnDestroy {
         this.loading.set(false);
       },
     });
-
-    this.audio.startMusic();
   }
 
   ngOnDestroy(): void {
     this.stopNarration();
-    this.audio.stopMusic();
+    this.themes.clear();
     // Leaving mid-reading must not leave the music ducked on the next screen.
     this.audio.restoreAfterRecording();
     // Leaving the page with the microphone still open is the one bug a child
@@ -285,6 +300,21 @@ export class BookReader implements OnInit, OnDestroy {
       this.layOutPage();
       this.audio.play('page-turn', 0.35);
     }
+  }
+
+  /** Jump to a page picked from the page dots. */
+  goToPage(pageId: number): void {
+    const target = this.leaves().findIndex((leaf) => leaf.kind === 'page' && leaf.id === pageId);
+
+    if (target < 0 || target === this.index() || this.isBusy() || this.scoring()) {
+      return;
+    }
+
+    this.leavePage();
+    this.turnDirection.set(target > this.index() ? 'next' : 'prev');
+    this.index.set(target);
+    this.layOutPage();
+    this.audio.play('page-turn', 0.35);
   }
 
   previous(): void {
@@ -472,6 +502,7 @@ export class BookReader implements OnInit, OnDestroy {
     }
 
     this.showScore.set(true);
+    this.cheers.forScore(attempt.effective_score, this.passMark());
   }
 
   /**
@@ -663,10 +694,20 @@ export class BookReader implements OnInit, OnDestroy {
 
   private loadPageProgress(): void {
     this.progressService.bookPages(this.bookId).subscribe({
-      next: (response) => this.pageProgress.set(response.data),
+      next: (response) => this.setPageProgress(response.data),
       // A book the pupil was not assigned still reads fine; it just isn't tracked.
       error: () => this.pageProgress.set(null),
     });
+  }
+
+  /** Take the pupil's page progress; finishing the book on this screen is cheered. */
+  private setPageProgress(progress: BookPageProgress | null): void {
+    const before = this.pageProgress();
+    this.pageProgress.set(progress);
+
+    if (before && !before.is_completed && progress?.is_completed) {
+      this.cheers.cheer('congrats', 'Congrats! You finished the whole book!');
+    }
   }
 
   /** Tick this page off as read. */
@@ -679,9 +720,10 @@ export class BookReader implements OnInit, OnDestroy {
     this.markingRead.set(true);
     this.progressService.markPageRead(leaf.id).subscribe({
       next: (response) => {
-        this.pageProgress.set(response.data);
         this.markingRead.set(false);
         this.audio.play('correct', 0.4);
+        this.cheers.cheer('keep-going');
+        this.setPageProgress(response.data);
         // A picture page with no words is finished by this tap alone, so this
         // is where its badge would be earned.
         this.celebrationService.push(response.celebrations);

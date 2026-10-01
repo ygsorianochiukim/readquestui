@@ -1,3 +1,5 @@
+import { ThemeKey } from '../theme/theme.model';
+
 import { AchievementSummary } from '../achievement/achievement.model';
 import { Badge } from '../badge/badge.model';
 import { PronunciationAttempt } from '../pronunciation-attempt/pronunciation-attempt.model';
@@ -19,6 +21,7 @@ export interface ChapterProgress {
 export interface BookOverview {
   id: number;
   title: string;
+  theme: ThemeKey | null;
   description: string | null;
   cover_image_url: string | null;
   reading_level: string | null;
@@ -41,6 +44,8 @@ export interface BookOverview {
 export interface PageChapter {
   id: number;
   title: string;
+  /** Null: read in the book's theme. */
+  theme: ThemeKey | null;
   sequence: number;
   page_count: number;
   pages_completed: number;
@@ -52,6 +57,8 @@ export interface ChapterNode {
   id: number;
   chapter_number: number;
   title: string;
+  /** Null: read in the book's theme. */
+  theme: ThemeKey | null;
   image_url: string | null;
   has_quiz: boolean;
   is_locked: boolean;
@@ -61,6 +68,8 @@ export interface ChapterNode {
 export interface BookProgress {
   id: number;
   title: string;
+  type?: 'standard' | 'scanned';
+  theme: ThemeKey | null;
   description: string | null;
   reading_level: string | null;
   chapters: ChapterNode[];

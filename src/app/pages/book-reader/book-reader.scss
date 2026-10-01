@@ -326,8 +326,19 @@
   }
 
   &__dot {
-    width: 26px;
-    height: 26px;
+    // A button now — pupils pick a page by tapping its dot — so it is sized
+    // for a small finger.
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
     display: flex;
     align-items: center;
     justify-content: center;

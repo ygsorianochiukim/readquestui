@@ -1,0 +1,135 @@
+// The cheer is decoration over the page: it never takes a tap.
+.cheer {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.cheer__bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: min(88vw, 520px);
+  padding: 1.25rem 2rem 1.4rem;
+  border-radius: 32px;
+  border: 5px solid #fff;
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 18px 40px rgba(20, 24, 60, 0.35);
+  animation: cheer-pop 2.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+  .cheer--congrats & {
+    background: linear-gradient(160deg, #ffb52e, #ff6f3c);
+  }
+  .cheer--great & {
+    background: linear-gradient(160deg, #22b86b, #178f8b);
+  }
+  .cheer--keep-going & {
+    background: linear-gradient(160deg, #4f7ff0, #6e4fe0);
+  }
+  .cheer--try-again & {
+    background: linear-gradient(160deg, #f0648e, #e04870);
+  }
+}
+
+.cheer__emoji {
+  font-size: clamp(3rem, 12vw, 4.5rem);
+  line-height: 1;
+  animation: cheer-wiggle 0.9s ease-in-out 0.25s 2;
+}
+
+.cheer__message {
+  margin: 0;
+  font-size: clamp(1.8rem, 7vw, 2.8rem);
+  font-weight: 900;
+  line-height: 1.1;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
+}
+
+.cheer__confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.cheer__piece {
+  position: absolute;
+  top: -20px;
+  width: 12px;
+  height: 18px;
+  border-radius: 3px;
+  animation: cheer-fall 1.9s ease-in forwards;
+}
+
+@keyframes cheer-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  14% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  22% {
+    transform: scale(1);
+  }
+  85% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9) translateY(-20px);
+    opacity: 0;
+  }
+}
+
+@keyframes cheer-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-14deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(14deg) scale(1.1);
+  }
+}
+
+@keyframes cheer-fall {
+  0% {
+    transform: translateY(0) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(540deg);
+    opacity: 0.6;
+  }
+}
+
+@keyframes cheer-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  85% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cheer__bubble {
+    animation: cheer-fade 2.2s ease both;
+  }
+  .cheer__emoji {
+    animation: none;
+  }
+  .cheer__confetti {
+    display: none;
+  }
+}

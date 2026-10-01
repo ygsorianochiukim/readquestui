@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { BookPayload, BookService, ClassProgress } from '../../services/book/book';
 import { UploadService } from '../../services/upload/upload';
 import { Book } from '../../models';
+import { themeFor } from '../../models/theme/theme.model';
 import {
   Alert,
   Button,
@@ -14,6 +15,7 @@ import {
   ProgressBar,
   Spinner,
   Icon,
+  ThemePicker,
 } from '../../shared/components';
 
 @Component({
@@ -28,7 +30,8 @@ import {
     Modal,
     ProgressBar,
     Spinner,
-    Icon
+    Icon,
+    ThemePicker,
   ],
   templateUrl: './books.html',
   styleUrl: './books.scss',
@@ -51,6 +54,14 @@ export class Books implements OnInit {
   readonly errorMessage = signal<string | null>(null);
 
   bookForm: BookPayload = this.emptyForm();
+
+  // ---- Reading order ----
+  /** Arranging the shelf: the books in the order pupils will meet them. */
+  readonly ordering = signal(false);
+  readonly orderDraft = signal<Book[]>([]);
+  readonly savingOrder = signal(false);
+  /** The book being dragged, by its place in the list. */
+  readonly dragIndex = signal<number | null>(null);
 
   ngOnInit(): void {
     this.loadBooks();
@@ -76,6 +87,87 @@ export class Books implements OnInit {
     this.router.navigate(['/dashboard/upload']);
   }
 
+  /** The theme's name for a book card, or null for the classic look. */
+  themeName(book: Book): string | null {
+    return themeFor(book.theme)?.name ?? null;
+  }
+
+  /** The first scenery picture of a book's theme, for its card. */
+  themeEmoji(book: Book): string | null {
+    return themeFor(book.theme)?.scenery[0] ?? null;
+  }
+
+  startOrdering(): void {
+    this.orderDraft.set([...this.books()].sort((a, b) => a.sequence - b.sequence));
+    this.errorMessage.set(null);
+    this.ordering.set(true);
+  }
+
+  cancelOrdering(): void {
+    this.ordering.set(false);
+    this.dragIndex.set(null);
+  }
+
+  /** Move a book up (-1) or down (+1) the reading order. */
+  moveBook(index: number, delta: number): void {
+    this.placeBook(index, index + delta);
+  }
+
+  onDragStart(index: number, event: DragEvent): void {
+    this.dragIndex.set(index);
+    // Firefox will not start a drag without some data.
+    event.dataTransfer?.setData('text/plain', String(index));
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  /** Dragging over another book moves the dragged one into its place. */
+  onDragOver(index: number, event: DragEvent): void {
+    const from = this.dragIndex();
+    if (from === null) {
+      return;
+    }
+
+    event.preventDefault();
+    if (from !== index) {
+      this.placeBook(from, index);
+      this.dragIndex.set(index);
+    }
+  }
+
+  onDragEnd(): void {
+    this.dragIndex.set(null);
+  }
+
+  saveOrder(): void {
+    this.savingOrder.set(true);
+    this.errorMessage.set(null);
+
+    this.bookService.reorder(this.orderDraft().map((book) => book.id)).subscribe({
+      next: (response) => {
+        this.books.set(response.data);
+        this.savingOrder.set(false);
+        this.ordering.set(false);
+      },
+      error: (response) => {
+        this.savingOrder.set(false);
+        this.errorMessage.set(this.readError(response));
+      },
+    });
+  }
+
+  private placeBook(from: number, to: number): void {
+    const books = [...this.orderDraft()];
+    if (to < 0 || to >= books.length || from === to) {
+      return;
+    }
+
+    const [book] = books.splice(from, 1);
+    books.splice(to, 0, book);
+    this.orderDraft.set(books);
+  }
+
   /** Class progress for one book, or nulls when nobody has it assigned. */
   progressFor(book: Book): ClassProgress | null {
     return this.classProgress()[book.id] ?? null;
@@ -88,8 +180,8 @@ export class Books implements OnInit {
       description: book.description ?? '',
       cover_image_url: book.cover_image_url ?? '',
       reading_level: book.reading_level ?? '',
-      sequence: book.sequence,
       status: book.status,
+      theme: book.theme ?? null,
     };
     this.errorMessage.set(null);
     this.isFormOpen.set(true);
@@ -160,8 +252,8 @@ export class Books implements OnInit {
       description: '',
       cover_image_url: '',
       reading_level: '',
-      sequence: 1,
       status: 'active',
+      theme: null,
     };
   }
 

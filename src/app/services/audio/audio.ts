@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { GenerativeMusic, playSynthCue } from './synth';
+import { DEFAULT_MOOD, GenerativeMusic, MOODS, playSynthCue } from './synth';
 
 export type SoundName =
   | 'correct'
@@ -41,7 +41,8 @@ type Source = 'file' | 'synth';
 @Injectable({ providedIn: 'root' })
 export class AudioService {
   readonly muted = signal(this.read(MUTE_KEY, false));
-  readonly musicEnabled = signal(this.read(MUSIC_KEY, false));
+  /** On unless the child (or teacher) switched it off on this device. */
+  readonly musicEnabled = signal(this.read(MUSIC_KEY, true));
 
   private cache = new Map<SoundName, HTMLAudioElement>();
   /** Remembered per cue, so a missing file is only asked for once. */
@@ -49,6 +50,8 @@ export class AudioService {
   private music: HTMLAudioElement | null = null;
   private musicSource: Source | null = null;
   private generative: GenerativeMusic | null = null;
+  /** The reading theme the generated tune is played in. */
+  private mood: string | null = null;
 
   /** A reading screen asked for music (and has not asked it to stop). */
   private musicWanted = false;
@@ -123,16 +126,28 @@ export class AudioService {
     }
   }
 
-  /** Called when a reading screen opens; respects both switches. */
+  /**
+   * Start the background music. The student shell calls this once, so the
+   * tune plays on, unbroken, from screen to screen. Respects both switches.
+   */
   startMusic(): void {
     this.musicWanted = true;
     this.resumeMusic();
   }
 
-  /** Music must not follow a child out of the reading screen. */
+  /** Music must not follow a child out of the student app (logging out, say). */
   stopMusic(): void {
     this.musicWanted = false;
     this.silenceMusic();
+  }
+
+  /**
+   * Play the generated tune in a reading theme's mood. It changes key at the
+   * next chord rather than stopping, so the music stays continuous.
+   */
+  setMood(theme: string | null): void {
+    this.mood = theme;
+    this.generative?.setMood(this.moodFor(theme));
   }
 
   /**
@@ -198,8 +213,15 @@ export class AudioService {
       return;
     }
 
-    this.generative ??= new GenerativeMusic(context, this.master);
+    if (!this.generative) {
+      this.generative = new GenerativeMusic(context, this.master);
+      this.generative.setMood(this.moodFor(this.mood));
+    }
     this.generative.start(MUSIC_VOLUME);
+  }
+
+  private moodFor(theme: string | null) {
+    return (theme && MOODS[theme]) || DEFAULT_MOOD;
   }
 
   private synthesise(name: SoundName, volume: number): void {
@@ -258,6 +280,9 @@ export class AudioService {
     }
 
     const wake = () => {
+      // Music asked for before the first tap was refused by the browser;
+      // this tap is the permission it was waiting for.
+      this.resumeMusic();
       const context = this.audioContext();
       if (!context || context.state === 'running') {
         document.removeEventListener('pointerdown', wake, true);

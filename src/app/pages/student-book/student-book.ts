@@ -1,7 +1,8 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AudioService } from '../../services/audio/audio';
 import { ProgressService } from '../../services/progress/progress';
+import { ThemeService } from '../../services/theme/theme';
 import { BookProgress, ChapterNode } from '../../models';
 import {
   EmptyState,
@@ -23,9 +24,10 @@ import {
   templateUrl: './student-book.html',
   styleUrl: './student-book.scss',
 })
-export class StudentBook implements OnInit {
+export class StudentBook implements OnInit, OnDestroy {
   private progressService = inject(ProgressService);
   private audio = inject(AudioService);
+  private themes = inject(ThemeService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -83,10 +85,15 @@ export class StudentBook implements OnInit {
     this.progressService.book(this.bookId).subscribe({
       next: (response) => {
         this.book.set(response.data);
+        this.themes.use(response.data.theme);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  ngOnDestroy(): void {
+    this.themes.clear();
   }
 
   private stateFor(chapter: ChapterNode, isCurrent: boolean): LevelStopLook {

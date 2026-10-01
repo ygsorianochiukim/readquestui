@@ -48,3 +48,4 @@ export type {
   DashboardData,
   StudentProgressReport,
 } from './progress/progress.model';
+export type { ThemeKey, ReadingTheme } from './theme/theme.model';

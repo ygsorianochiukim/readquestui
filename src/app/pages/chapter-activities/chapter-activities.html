@@ -32,107 +32,106 @@
     </nav>
 
     <div class="stage">
-      <!-- STORY -->
-      @if (activeStep() === 'story') {
+      <!-- PAGES: pick a page from the chapter's map, then read that one page. -->
+      @if (activeStep() === 'pages' && !pageOpen()) {
         <div class="act">
           <div class="act__bar">
-            <h2 class="act__title"><app-sticker-icon name="book" size="sm" /> Read the story</h2>
-            <app-button variant="secondary" (clicked)="toggleNarration()">
-              <app-icon [name]="narrating() ? 'stop' : 'listen'" size="sm" />
-              {{ narrating() ? 'Stop' : (narrationLoading() ? 'Loading…' : 'Listen') }}
-            </app-button>
+            <h2 class="act__title"><app-sticker-icon name="book" size="sm" /> Pick a page</h2>
+            @if (readAloudSummary(); as summary) {
+              <span class="pagemap__summary">
+                {{ summary.pages_read }} of {{ summary.pages_total }} pages read
+                @if (summary.average !== null) {
+                  · average {{ summary.average }}
+                }
+              </span>
+            }
           </div>
-          @if (pages().length) {
-            <!-- The chapter as a real book: one page at a time, turned by hand. -->
-            <app-flip-book
-              [pages]="pages()"
-              [alt]="title()"
-              (pageChange)="onFlipPage($event)" />
+          <p class="act__muted">
+            Tap a page to open it. Listen to it, then read it out loud. Read every page, and
+            score {{ passMark }} on average, to unlock the game.
+          </p>
+
+          @if (!scoresLoaded()) {
+            <app-spinner label="Finding your place…" />
           } @else {
-            @if (imageUrl()) {
-              <img class="act__image" [src]="imageUrl()" [alt]="title()" />
-            }
-            @if (storyText()) {
-              <p class="act__story">{{ storyText() }}</p>
-            } @else {
-              <p class="act__muted">This chapter has no story text yet.</p>
-            }
+            <!-- The chapter's own level map: page 1 at the bottom, like books and chapters. -->
+            <app-level-map [stops]="pageStops()" finishIcon="game" (pick)="pickPage($event)" />
           }
-          <div class="act__actions">
-            <app-button
-              [variant]="pages().length && !onLastPage() && !storyRead() ? 'secondary' : 'primary'"
-              (clicked)="markStoryRead()">
-              {{ storyRead() ? 'Read again — continue' : "I've read it" }}
-              <app-icon name="forward" size="sm" />
-            </app-button>
-          </div>
+
+          @if (pronunciationPassed()) {
+            <div class="act__actions">
+              <app-status-indicator status="passed" label="Every page read — great reading!" />
+              <app-button (clicked)="go('game')">Play a game <app-icon name="forward" size="sm" /></app-button>
+            </div>
+          } @else if (allPagesRead()) {
+            <app-alert
+              variant="info"
+              [message]="
+                'You read every page! Your pages need to average ' + passMark +
+                ' — pick a page with a low score and read it again.'
+              " />
+          }
         </div>
       }
 
-      <!-- READ ALOUD -->
-      @if (activeStep() === 'readaloud') {
+      <!-- ONE PAGE: hear it, then read it aloud. -->
+      @if (activeStep() === 'pages' && pageOpen()) {
         <div class="act">
-          <h2 class="act__title"><app-sticker-icon name="mic" size="sm" /> Read it aloud</h2>
-          @if (readByPage()) {
-            <p class="act__muted">
-              Read one page at a time. Press record and read the page out loud — each word
-              turns green as you get it right. Read every page, and score {{ passMark }} on
-              average, to unlock the next step.
-            </p>
+          <nav class="pagebar" aria-label="Pages">
+            @if (readByPage()) {
+              <app-button
+                variant="ghost"
+                [disabled]="isBusy() || recordingState() === 'recording'"
+                (clicked)="backToPages()">
+                <app-icon name="back" size="sm" /> All pages
+              </app-button>
 
-            <!-- Where you are in the chapter: one dot per page, coloured by its best score. -->
-            <nav class="readpages" aria-label="Pages to read aloud">
-              <button
-                type="button"
-                class="readpages__turn"
-                [disabled]="readIndex() === 0 || isBusy() || recordingState() === 'recording'"
-                aria-label="Previous page"
-                (click)="goToReadPage(readIndex() - 1)">
-                <app-icon name="back" size="md" />
-              </button>
-
-              <div class="readpages__middle">
-                <span class="readpages__count">Page {{ readIndex() + 1 }} of {{ readingPages().length }}</span>
-                <ol class="readpages__dots">
-                  @for (page of readingPages(); track page.key; let i = $index) {
-                    <li>
-                      <button
-                        type="button"
-                        class="readpages__dot readpages__dot--{{ scoreOf(page) === null ? 'unread' : meterTone(scoreOf(page)!) }}"
-                        [class.readpages__dot--current]="i === readIndex()"
-                        [disabled]="isBusy() || recordingState() === 'recording'"
-                        [attr.aria-label]="
-                          'Page ' + (i + 1) + (scoreOf(page) === null ? ', not read yet' : ', best score ' + scoreOf(page))
-                        "
-                        (click)="goToReadPage(i)"></button>
-                    </li>
-                  }
-                </ol>
-                @if (readAloudSummary(); as summary) {
-                  <span class="readpages__summary">
-                    {{ summary.pages_read }} of {{ summary.pages_total }} read
-                    @if (summary.average !== null) {
-                      · average {{ summary.average }}
-                    }
-                  </span>
-                }
+              <div class="pagebar__turns">
+                <button
+                  type="button"
+                  class="readpages__turn"
+                  [disabled]="readIndex() === 0 || isBusy() || recordingState() === 'recording'"
+                  aria-label="Previous page"
+                  (click)="openPage(readIndex() - 1)">
+                  <app-icon name="back" size="md" />
+                </button>
+                <span class="pagebar__count">Page {{ readIndex() + 1 }} of {{ readingPages().length }}</span>
+                <button
+                  type="button"
+                  class="readpages__turn"
+                  [disabled]="!canTurnNext() || isBusy() || recordingState() === 'recording'"
+                  [attr.aria-label]="canTurnNext() ? 'Next page' : 'Next page — read this one first'"
+                  (click)="openPage(readIndex() + 1)">
+                  <app-icon name="forward" size="md" />
+                </button>
               </div>
+            } @else {
+              <h2 class="act__title"><app-sticker-icon name="book" size="sm" /> Read the story</h2>
+            }
 
-              <button
-                type="button"
-                class="readpages__turn"
-                [disabled]="isLastReadPage() || isBusy() || recordingState() === 'recording'"
-                aria-label="Next page"
-                (click)="goToReadPage(readIndex() + 1)">
-                <app-icon name="forward" size="md" />
-              </button>
-            </nav>
-          } @else {
-            <p class="act__muted">
-              Press record and read the story out loud. Each word turns green as you
-              get it right. Score {{ passMark }} or higher to unlock the next step.
-            </p>
+            <app-button
+              variant="secondary"
+              [disabled]="recordingState() !== 'idle'"
+              (clicked)="toggleNarration()">
+              <app-icon [name]="narrating() ? 'stop' : 'listen'" size="sm" />
+              {{ narrating() ? 'Stop' : (narrationLoading() ? 'Loading…' : 'Listen') }}
+            </app-button>
+          </nav>
+
+          @if (currentReadPage(); as page) {
+            @if (page.heading) {
+              <p class="pageview__heading">{{ page.heading }}</p>
+            }
+            @for (image of page.images; track image) {
+              <img class="pageview__image" [src]="image" [alt]="title() + ', page ' + (readIndex() + 1)" />
+            }
+          } @else if (imageUrl()) {
+            <img class="act__image" [src]="imageUrl()" [alt]="title()" />
           }
+
+          <p class="act__muted">
+            Press record and read the {{ readNoun() }} out loud. Each word turns green as you get it right.
+          </p>
 
           @if (readText()) {
             <app-reading-text
@@ -254,8 +253,15 @@
           <!-- Page by page, a read page always leads on to the next one. -->
           @if (readByPage() && result() && !isLastReadPage() && recordingState() === 'idle') {
             <div class="act__actions">
-              <app-button (clicked)="goToReadPage(readIndex() + 1)">
+              <app-button (clicked)="openPage(readIndex() + 1)">
                 Next page <app-icon name="forward" size="sm" />
+              </app-button>
+            </div>
+          } @else if (readByPage() && result() && recordingState() === 'idle' && !pronunciationPassed()) {
+            <!-- The last page: back to the map, to read a low-scoring page again. -->
+            <div class="act__actions">
+              <app-button (clicked)="backToPages()">
+                <app-icon name="back" size="sm" /> All pages
               </app-button>
             </div>
           }
@@ -263,7 +269,7 @@
           @if (pronunciationPassed()) {
             <div class="act__actions">
               <app-status-indicator status="passed" label="Great reading!" />
-              <app-button (clicked)="go('game')">Continue <app-icon name="forward" size="sm" /></app-button>
+              <app-button (clicked)="go('game')">Play a game <app-icon name="forward" size="sm" /></app-button>
             </div>
           } @else if (result() && !result()?.passed) {
             <!-- Below the pass mark: say why, and never leave them stuck. -->

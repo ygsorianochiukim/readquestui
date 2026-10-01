@@ -1,5 +1,12 @@
-<div class="game">
-  <!-- Floating scenery -->
+<div
+  class="game"
+  [class.game--themed]="!!theme()"
+  [attr.data-theme]="theme()?.key ?? null"
+  [style.--sky-1]="theme()?.sky?.[0] ?? null"
+  [style.--sky-2]="theme()?.sky?.[1] ?? null"
+  [style.--sky-3]="theme()?.sky?.[2] ?? null">
+  <!-- Floating scenery: the book's theme when one is open -->
+  <app-theme-scenery [theme]="theme()" />
   <div class="game__sky" aria-hidden="true">
     <span class="game__cloud game__cloud--1"></span>
     <span class="game__cloud game__cloud--2"></span>
@@ -64,6 +71,15 @@
       <app-sticker-icon class="dock__icon" [name]="muted() ? 'stop' : 'listen'" [color]="muted() ? 'grey' : null" />
       <span class="dock__label">{{ muted() ? 'Sound off' : 'Sound on' }}</span>
     </button>
+    <button
+      type="button"
+      class="dock__btn"
+      [attr.aria-pressed]="musicEnabled()"
+      [attr.aria-label]="musicEnabled() ? 'Turn music off' : 'Turn music on'"
+      (click)="toggleMusic()">
+      <app-sticker-icon class="dock__icon" name="music" [color]="musicEnabled() && !muted() ? null : 'grey'" />
+      <span class="dock__label">{{ musicEnabled() ? 'Music on' : 'Music off' }}</span>
+    </button>
     <button type="button" class="dock__btn dock__btn--logout" (click)="logout()">
       <app-sticker-icon class="dock__icon" name="logout" />
       <span class="dock__label">Log out</span>
@@ -72,3 +88,4 @@
 </div>
 
 <app-reward-toast />
+<app-cheer />

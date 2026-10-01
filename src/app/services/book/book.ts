@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ApiResponse, Book } from '../../models';
+import { ApiResponse, Book, ThemeKey } from '../../models';
 
 /** How far a teacher's own class has got through one book. */
 export interface ClassProgress {
@@ -27,6 +27,7 @@ export interface BookPayload {
   reading_level?: string | null;
   sequence?: number;
   status?: string;
+  theme?: ThemeKey | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -44,6 +45,11 @@ export class BookService {
 
   update(id: number, payload: BookPayload): Observable<ApiResponse<Book>> {
     return this.http.put<ApiResponse<Book>>(`${this.base}/${id}`, payload);
+  }
+
+  /** Set the reading order: every book, first to last. */
+  reorder(bookIds: number[]): Observable<ApiResponse<Book[]>> {
+    return this.http.put<ApiResponse<Book[]>>(`${this.base}/order`, { book_ids: bookIds });
   }
 
   remove(id: number): Observable<unknown> {

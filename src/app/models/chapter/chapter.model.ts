@@ -1,8 +1,12 @@
+import { ThemeKey } from '../theme/theme.model';
+
 export interface Chapter {
   id: number;
   book_id: number;
   chapter_number: number;
   title: string;
+  /** Null: read in the book's theme. */
+  theme?: ThemeKey | null;
   /** Read off the scanned pages. Null for a picture book's chapter. */
   story_text: string | null;
   image_url: string | null;

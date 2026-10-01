@@ -294,3 +294,31 @@
 @media (prefers-reduced-motion: reduce) {
   .game__cloud { animation: none; }
 }
+
+// ---- Reading themes -------------------------------------------------------
+// Inside a book the world takes on the book's theme (see ThemeService): its
+// three sky colours arrive as --sky-1..3, and its scenery drifts behind.
+.game--themed {
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 52%, var(--sky-3) 100%);
+
+  &::after {
+    background: linear-gradient(0deg, var(--sky-3) 0%, transparent 100%);
+  }
+
+  .hud {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sky-1) 92%, transparent) 0%,
+      color-mix(in srgb, var(--sky-1) 60%, transparent) 48%,
+      transparent 100%
+    );
+  }
+
+  // The theme brings its own scenery; the default sun and bubbles step aside.
+  .game__sun,
+  .game__cloud {
+    display: none;
+  }
+}

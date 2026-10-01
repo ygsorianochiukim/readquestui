@@ -33,3 +33,6 @@ export { FlipBook } from './flip-book/flip-book';
 export type { FlipPage } from './flip-book/flip-book';
 export { StickerIcon } from './sticker-icon/sticker-icon';
 export type { StickerColor } from './sticker-icon/sticker-icon';
+export { CheerOverlay } from './cheer/cheer';
+export { ThemePicker } from './theme-picker/theme-picker';
+export { ThemeScenery } from './theme-scenery/theme-scenery';

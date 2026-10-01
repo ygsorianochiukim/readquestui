@@ -1,3 +1,4 @@
+import { ThemeKey } from '../theme/theme.model';
 import { BookPage } from '../book-page/book-page.model';
 import { Chapter } from '../chapter/chapter.model';
 
@@ -7,6 +8,7 @@ export interface Book {
   id: number;
   title: string;
   type: BookType;
+  theme: ThemeKey | null;
   description: string | null;
   cover_image_url: string | null;
   reading_level: string | null;

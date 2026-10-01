@@ -1,4 +1,9 @@
 <div class="page-actions">
+  @if (books().length > 1 && !ordering()) {
+    <app-button variant="secondary" (clicked)="startOrdering()">
+      <app-icon name="layers" size="sm" /> Arrange reading order
+    </app-button>
+  }
   <!-- A book is only ever made by uploading it: the pages are read for you and
        the book, its chapters and their content are built from them. -->
   <app-button (clicked)="goToUpload()">
@@ -8,7 +13,76 @@
 
 <app-alert [message]="errorMessage()" variant="error" />
 
-@if (loading()) {
+@if (ordering()) {
+  <!-- ---- Reading order: the order pupils meet the books in ---------- -->
+  <section class="order-panel" aria-labelledby="order-title">
+    <header class="order-panel__head">
+      <h3 id="order-title" class="order-panel__title">Reading order</h3>
+      <p class="order-panel__note">
+        Pupils read the books in this order, and each one opens when the book before it is
+        finished. Drag a book to move it, or use the arrows.
+      </p>
+    </header>
+
+    <ol class="order-list">
+      @for (book of orderDraft(); track book.id; let i = $index; let first = $first; let last = $last) {
+        <li
+          class="order-list__item"
+          [class.order-list__item--dragging]="dragIndex() === i"
+          draggable="true"
+          (dragstart)="onDragStart(i, $event)"
+          (dragover)="onDragOver(i, $event)"
+          (drop)="$event.preventDefault()"
+          (dragend)="onDragEnd()">
+          <span class="order-list__handle" aria-hidden="true">⠿</span>
+          <span class="order-list__number">{{ i + 1 }}</span>
+          <span class="order-list__thumb">
+            @if (book.cover_image_url) {
+              <img [src]="book.cover_image_url" alt="" />
+            } @else {
+              <app-icon name="book" size="md" />
+            }
+          </span>
+          <span class="order-list__text">
+            <span class="order-list__name">{{ book.title }}</span>
+            <span class="order-list__meta">
+              {{ book.reading_level || 'No level' }}
+              @if (themeName(book); as theme) {
+                · {{ themeEmoji(book) }} {{ theme }}
+              }
+            </span>
+          </span>
+          <span class="order-list__moves">
+            <button
+              type="button"
+              class="order-list__move"
+              [disabled]="first"
+              [attr.aria-label]="'Move ' + book.title + ' up'"
+              (click)="moveBook(i, -1)">▲</button>
+            <button
+              type="button"
+              class="order-list__move"
+              [disabled]="last"
+              [attr.aria-label]="'Move ' + book.title + ' down'"
+              (click)="moveBook(i, 1)">▼</button>
+          </span>
+        </li>
+      }
+    </ol>
+
+    <p class="order-panel__add">
+      Adding a book? Upload it and it joins the end of the list — then come back here to move it.
+      <button type="button" class="order-panel__link" (click)="goToUpload()">Add a book</button>
+    </p>
+
+    <div class="order-panel__actions">
+      <app-button variant="secondary" (clicked)="cancelOrdering()">Cancel</app-button>
+      <app-button [disabled]="savingOrder()" (clicked)="saveOrder()">
+        {{ savingOrder() ? 'Saving…' : 'Save order' }}
+      </app-button>
+    </div>
+  </section>
+} @else if (loading()) {
   <app-spinner label="Loading books…" />
 } @else if (books().length === 0) {
   <app-empty-state
@@ -36,12 +110,19 @@
             <!-- Every book is Book → Chapters → Content; a picture book's
                  content is its pages. -->
             <p class="entity-card__subheader">
-              {{ book.reading_level || 'Book ' + book.sequence }} ·
+              Book {{ book.sequence }}
+              @if (book.reading_level) {
+                · {{ book.reading_level }}
+              }
+              ·
               {{ book.chapters_count ?? 0 }} {{ book.chapters_count === 1 ? 'chapter' : 'chapters' }}
               @if (book.type === 'scanned') {
                 · {{ book.pages_count ?? 0 }} pages
               }
             </p>
+            @if (themeName(book); as theme) {
+              <p class="book-theme">{{ themeEmoji(book) }} {{ theme }} theme</p>
+            }
           </div>
         </div>
 
@@ -102,9 +183,6 @@
       <input name="reading_level" [(ngModel)]="bookForm.reading_level" />
     </app-form-field>
 
-    <app-form-field label="Order (1–6)">
-      <input type="number" name="sequence" [(ngModel)]="bookForm.sequence" min="1" />
-    </app-form-field>
 
     <app-form-field label="Cover image">
       <div class="cover-upload">
@@ -132,6 +210,13 @@
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
       </select>
+    </app-form-field>
+
+    <app-form-field
+      class="form-grid__full"
+      label="Theme"
+      hint="The world pupils read this book in — its colours, pictures and music. A chapter can pick its own.">
+      <app-theme-picker [(value)]="bookForm.theme" label="Book theme" />
     </app-form-field>
   </form>
 

@@ -174,6 +174,16 @@
         </app-button>
       </div>
     </app-form-field>
+
+    <app-form-field
+      label="Theme"
+      hint="A chapter is read in its book's theme unless you pick one of its own.">
+      <app-theme-picker
+        [(value)]="chapterForm.theme"
+        noneLabel="Same as the book"
+        noneBlurb="Use the book's theme"
+        label="Chapter theme" />
+    </app-form-field>
   </form>
 
   <div footer>

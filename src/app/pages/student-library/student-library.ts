@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { ProgressService } from '../../services/progress/progress';
 import { StudentAuthService } from '../../services/student-auth/student-auth';
 import { AudioService } from '../../services/audio/audio';
+import { ThemeService } from '../../services/theme/theme';
 import { BookOverview, ChapterNode } from '../../models';
 import { PageChapter } from '../../models/progress/progress.model';
 import {
@@ -69,6 +70,7 @@ export class StudentLibrary implements OnInit {
   private progressService = inject(ProgressService);
   private auth = inject(StudentAuthService);
   private audio = inject(AudioService);
+  private themes = inject(ThemeService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
@@ -188,7 +190,10 @@ export class StudentLibrary implements OnInit {
   });
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.clearZoomTimer());
+    this.destroyRef.onDestroy(() => {
+      this.clearZoomTimer();
+      this.themes.clear();
+    });
   }
 
   ngOnInit(): void {
@@ -225,6 +230,8 @@ export class StudentLibrary implements OnInit {
 
     this.openBook.set(book);
     this.chapters.set([]);
+    // Stepping inside a book steps into its world.
+    this.themes.use(book.theme);
 
     // Fetch while the zoom plays, so the rooms are usually ready as it lands.
     if (book.type !== 'scanned') {
@@ -261,6 +268,7 @@ export class StudentLibrary implements OnInit {
 
       this.zoom.set('kingdom');
       this.openBook.set(null);
+      this.themes.clear();
       this.chapters.set([]);
       this.zoomPhase.set('out');
 

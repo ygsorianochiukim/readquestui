@@ -186,19 +186,24 @@
         <div class="track__bar">
           <span class="track__fill" [style.width.%]="progress.percent"></span>
         </div>
-        <div class="track__dots">
-          @for (page of progress.pages; track page.id) {
-            <span
+        <!-- Pick a page: every dot opens its page. -->
+        <div class="track__dots" role="group" aria-label="Pick a page">
+          @for (page of trackPages(); track page.id) {
+            <button
+              type="button"
               class="track__dot"
               [class.track__dot--done]="page.is_completed"
-              [class.track__dot--here]="page.page_number === index() + 1"
-              [title]="'Page ' + page.page_number + (page.is_completed ? ' — finished' : '')">
+              [class.track__dot--here]="page.id === current()?.id"
+              [disabled]="isBusy() || scoring()"
+              [attr.aria-current]="page.id === current()?.id ? 'page' : null"
+              [attr.aria-label]="'Page ' + page.page_number + (page.is_completed ? ', finished' : '')"
+              (click)="goToPage(page.id)">
               @if (page.is_completed) {
                 <app-icon name="check" size="sm" />
               } @else {
                 {{ page.page_number }}
               }
-            </span>
+            </button>
           }
         </div>
       </div>

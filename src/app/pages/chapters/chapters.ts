@@ -20,6 +20,7 @@ import {
   ProgressBar,
   Spinner,
   Icon,
+  ThemePicker,
 } from '../../shared/components';
 
 /**
@@ -41,7 +42,8 @@ import {
     Modal,
     ProgressBar,
     Spinner,
-    Icon
+    Icon,
+    ThemePicker,
   ],
   templateUrl: './chapters.html',
   styleUrl: './chapters.scss',
@@ -178,6 +180,7 @@ export class Chapters implements OnInit {
       title: chapter.title,
       story_text: chapter.story_text ?? '',
       image_url: chapter.image_url ?? '',
+      theme: chapter.theme ?? null,
     };
     this.errorMessage.set(null);
     this.isFormOpen.set(true);
@@ -198,7 +201,12 @@ export class Chapters implements OnInit {
 
     // A picture book's chapter has no text of its own to send.
     const payload: ChapterPayload = this.isPictureBook()
-      ? { chapter_number: this.chapterForm.chapter_number, title: this.chapterForm.title, image_url: this.chapterForm.image_url }
+      ? {
+          chapter_number: this.chapterForm.chapter_number,
+          title: this.chapterForm.title,
+          image_url: this.chapterForm.image_url,
+          theme: this.chapterForm.theme ?? null,
+        }
       : this.chapterForm;
 
     this.chapterService.update(chapterId, payload).subscribe({
@@ -317,7 +325,7 @@ export class Chapters implements OnInit {
   }
 
   private emptyForm(): ChapterPayload {
-    return { chapter_number: 1, title: '', story_text: '', image_url: '' };
+    return { chapter_number: 1, title: '', story_text: '', image_url: '', theme: null };
   }
 
   private readError(response: HttpErrorResponse): string {
