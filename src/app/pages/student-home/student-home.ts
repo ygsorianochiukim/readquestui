@@ -4,13 +4,13 @@ import { StudentAuthService } from '../../services/student-auth/student-auth';
 import { RewardService } from '../../services/reward/reward';
 import { ProgressService } from '../../services/progress/progress';
 import { AchievementService } from '../../services/achievement/achievement';
-import { Achievement, Badge, BookOverview } from '../../models';
-import { Button, Spinner, Icon, StickerIcon } from '../../shared/components';
-import { NextTrophy } from './next-trophy/next-trophy';
+import { ReadingPlace, ReadingPlaceService } from '../../services/reading-place/reading-place';
+import { Badge, BookOverview } from '../../models';
+import { Spinner, Icon, Modal, StickerIcon } from '../../shared/components';
 
 @Component({
   selector: 'app-student-home',
-  imports: [Button, Spinner, NextTrophy, Icon, StickerIcon],
+  imports: [Spinner, Icon, Modal, StickerIcon],
   templateUrl: './student-home.html',
   styleUrl: './student-home.scss',
 })
@@ -20,6 +20,7 @@ export class StudentHome implements OnInit {
   private progressService = inject(ProgressService);
   private achievementService = inject(AchievementService);
   private router = inject(Router);
+  private places = inject(ReadingPlaceService);
 
   readonly student = this.studentAuth.student;
   readonly badges = signal<Badge[]>([]);
@@ -29,8 +30,6 @@ export class StudentHome implements OnInit {
 
   readonly achievementsUnlocked = signal(0);
   readonly achievementsTotal = signal(0);
-  /** The unlocked milestone closest to being earned, shown as a nudge. */
-  readonly nextAchievement = signal<Achievement | null>(null);
 
   readonly firstName = computed(() => this.student()?.first_name ?? 'Reader');
 
@@ -40,6 +39,11 @@ export class StudentHome implements OnInit {
     const done = books.reduce((sum, book) => sum + book.completed_chapters, 0);
     return total > 0 ? Math.round((done / total) * 100) : 0;
   });
+
+  /** Books open to read and not finished yet — the quests still going. */
+  readonly openQuests = computed(
+    () => this.books().filter((book) => !book.is_locked && !book.is_completed).length,
+  );
 
   readonly completedBooks = computed(
     () => this.books().filter((book) => book.is_completed).length,
@@ -94,11 +98,6 @@ export class StudentHome implements OnInit {
         const summary = response.data;
         this.achievementsUnlocked.set(summary.unlocked);
         this.achievementsTotal.set(summary.total);
-
-        const closest = summary.achievements
-          .filter((achievement) => !achievement.is_unlocked)
-          .sort((first, second) => second.percent - first.percent)[0];
-        this.nextAchievement.set(closest ?? null);
       },
       error: () => {},
     });
@@ -130,6 +129,102 @@ export class StudentHome implements OnInit {
       this.openBook(book);
     } else {
       this.goLibrary();
+    }
+  }
+
+  // ---- "Let's read!" ----
+
+  readonly letsReadOpen = signal(false);
+
+  /**
+   * The page the child was last on, if its book is still theirs to read.
+   * Read again whenever the student (and so the storage key) is known.
+   */
+  readonly lastPlace = computed<ReadingPlace | null>(() => {
+    this.student();
+    const place = this.places.last();
+    const book = this.books().find((entry) => entry.id === place?.bookId);
+
+    return place && book && !book.is_locked ? place : null;
+  });
+
+  /** The book "Let's read!" is about: where they stopped, else the next one to read. */
+  readonly letsReadBook = computed(() => {
+    const place = this.lastPlace();
+    return (place && this.books().find((book) => book.id === place.bookId)) || this.continueBook();
+  });
+
+  openLetsRead(): void {
+    if (!this.letsReadBook()) {
+      this.goLibrary();
+      return;
+    }
+    this.letsReadOpen.set(true);
+  }
+
+  /** Back to the very page they stopped on — or the next page they have not read. */
+  continueReading(): void {
+    const place = this.lastPlace();
+    const book = this.letsReadBook();
+    this.letsReadOpen.set(false);
+
+    if (place) {
+      if (place.kind === 'scanned') {
+        this.router.navigate(['/student/read', place.bookId], {
+          queryParams: { chapter: place.chapterId ?? undefined, page: place.page },
+        });
+      } else {
+        this.router.navigate(['/student/books', place.bookId, 'chapters', place.chapterId], {
+          queryParams: { page: place.page },
+        });
+      }
+      return;
+    }
+
+    if (book?.type !== 'scanned' && book?.current_chapter_id) {
+      this.router.navigate(['/student/books', book.id, 'chapters', book.current_chapter_id], {
+        queryParams: { page: 'next' },
+      });
+    } else if (book) {
+      this.openBook(book);
+    }
+  }
+
+  /** The chapter they are on, from its first page. */
+  startChapter(): void {
+    const place = this.lastPlace();
+    const book = this.letsReadBook();
+    this.letsReadOpen.set(false);
+
+    if (!book) {
+      return;
+    }
+
+    if (book.type === 'scanned') {
+      const chapterId = place?.chapterId ?? null;
+      this.router.navigate(['/student/read', book.id], {
+        queryParams: chapterId ? { chapter: chapterId } : {},
+      });
+      return;
+    }
+
+    const chapterId = (place?.bookId === book.id ? place.chapterId : null) ?? book.current_chapter_id;
+    if (chapterId) {
+      this.router.navigate(['/student/books', book.id, 'chapters', chapterId], {
+        queryParams: { page: 1 },
+      });
+    } else {
+      this.openBook(book);
+    }
+  }
+
+  /** Pick any open chapter from the book's map. */
+  pickChapter(): void {
+    const book = this.letsReadBook();
+    this.letsReadOpen.set(false);
+
+    if (book) {
+      this.openBook(book);
     }
   }
 }

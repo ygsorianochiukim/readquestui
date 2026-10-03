@@ -69,27 +69,37 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: 0.7rem 0.9rem;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    font-size: var(--font-size-sm);
+    padding: 0.55rem 0.75rem;
+    border-radius: 16px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 0.98rem;
     color: var(--color-sidebar-text);
     text-decoration: none;
+    transition: background-color 0.15s ease, transform 0.15s ease;
 
     &:hover {
       background: var(--color-sidebar-hover);
       text-decoration: none;
+      transform: translateX(2px);
     }
 
+    // The page you are on: a white tab that sits up off the sidebar.
     &--active {
       background: var(--color-sidebar-active);
       color: var(--color-primary-dark);
-      box-shadow: var(--shadow-sm);
+      box-shadow: 0 4px 0 rgba(31, 35, 51, 0.12);
+      font-weight: 600;
     }
   }
 
   &__icon {
-    font-size: 1.05rem;
+    flex: none;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  &__link:hover &__icon {
+    transform: rotate(-6deg) scale(1.08);
   }
 }
 

@@ -1,47 +1,6 @@
 @use 'abstracts' as *;
 
-.table-wrap {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-sm);
-
-  th {
-    text-align: left;
-    font-weight: 600;
-    color: var(--color-text-muted);
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  td {
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
-
-  &__strong {
-    font-weight: 600;
-    color: var(--color-text);
-  }
-
-  &__right {
-    text-align: right;
-  }
-
-  &__actions {
-    display: flex;
-    gap: var(--space-1);
-    justify-content: flex-end;
-  }
-}
+// The pupils table uses the shared table styles (styles/_tables.scss).
 
 .form-grid {
   display: grid;

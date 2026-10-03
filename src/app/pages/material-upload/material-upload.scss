@@ -24,6 +24,11 @@
     color: var(--color-primary);
   }
 
+  &__progress {
+    width: 100%;
+    max-width: 320px;
+  }
+
   &__title {
     margin: 0;
     font-size: var(--font-size-lg);

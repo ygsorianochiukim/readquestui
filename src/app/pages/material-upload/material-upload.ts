@@ -1,7 +1,8 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpEventType } from '@angular/common/http';
+import { Subscription } from 'rxjs';
 import { IngestService } from '../../services/ingest/ingest';
 import { BookPage, IngestBatch, IngestPreview, SuggestedChapter } from '../../models';
 import { SuggestedPart } from '../../models/ingest/ingest.model';
@@ -76,7 +77,14 @@ export class MaterialUpload implements OnInit, OnDestroy {
   /** Set while a page's corrected text is being saved. */
   readonly savingPageId = signal<number | null>(null);
 
+  /** How much of the file has been sent, while it is being sent. */
+  readonly uploadPercent = signal(0);
+
+  /** Set while an upload is being cancelled. */
+  readonly cancellingId = signal<number | null>(null);
+
   private poller: ReturnType<typeof setInterval> | null = null;
+  private sending: Subscription | null = null;
 
   readonly batch = computed(() => this.preview()?.batch ?? null);
   readonly isReady = computed(() => this.batch()?.status === 'ready');
@@ -94,6 +102,7 @@ export class MaterialUpload implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopPolling();
+    this.sending?.unsubscribe();
   }
 
   refresh(): void {
@@ -151,19 +160,35 @@ export class MaterialUpload implements OnInit, OnDestroy {
 
     this.errorMessage.set(null);
     this.uploading.set(true);
+    this.uploadPercent.set(0);
 
-    this.ingest.start(files, this.title() || null).subscribe({
-      next: (response) => {
-        this.uploading.set(false);
-        this.title.set('');
-        this.watch(response.data.id);
-        this.refresh();
+    this.sending = this.ingest.start(files, this.title() || null).subscribe({
+      next: (event) => {
+        if (event.type === HttpEventType.UploadProgress && event.total) {
+          this.uploadPercent.set(Math.round((event.loaded / event.total) * 100));
+        }
+
+        if (event.type === HttpEventType.Response && event.body) {
+          this.sending = null;
+          this.uploading.set(false);
+          this.title.set('');
+          this.watch(event.body.data.id);
+          this.refresh();
+        }
       },
       error: (response: HttpErrorResponse) => {
+        this.sending = null;
         this.uploading.set(false);
         this.errorMessage.set(this.uploadError(response));
       },
     });
+  }
+
+  /** Stop sending the file. Nothing reaches the server, so nothing to undo. */
+  cancelSending(): void {
+    this.sending?.unsubscribe();
+    this.sending = null;
+    this.uploading.set(false);
   }
 
   /**
@@ -396,18 +421,33 @@ export class MaterialUpload implements OnInit, OnDestroy {
   discard(): void {
     const batch = this.batch();
 
-    if (!batch) {
-      return;
+    if (batch) {
+      this.cancel(batch.id);
     }
+  }
 
-    this.ingest.discard(batch.id).subscribe({
+  /**
+   * Throw an upload away — finished or still being read. The server stops
+   * reading it at the next group of pages.
+   */
+  cancel(batchId: number): void {
+    this.cancellingId.set(batchId);
+
+    this.ingest.discard(batchId).subscribe({
       next: () => {
-        this.preview.set(null);
-        this.chapters.set([]);
-        this.formFilledFor = null;
+        this.cancellingId.set(null);
+
+        if (this.batch()?.id === batchId) {
+          this.close();
+        }
+
+        this.batches.update((batches) => batches.filter((batch) => batch.id !== batchId));
         this.refresh();
       },
-      error: () => this.errorMessage.set('Could not discard that upload.'),
+      error: () => {
+        this.cancellingId.set(null);
+        this.errorMessage.set('Could not cancel that upload.');
+      },
     });
   }
 
@@ -416,6 +456,48 @@ export class MaterialUpload implements OnInit, OnDestroy {
     this.preview.set(null);
     this.chapters.set([]);
     this.formFilledFor = null;
+  }
+
+  /** What the list says beside each upload, so a long read never looks frozen. */
+  batchLabel(batch: IngestBatch): string | null {
+    switch (batch.status) {
+      case 'queued':
+        return 'Waiting to start…';
+      case 'starting':
+        return 'Starting…';
+      case 'rasterizing':
+        return 'Splitting into pages…';
+      case 'analyzing':
+        return 'Finding the chapters…';
+      case 'reading':
+        return batch.pages_total > 0
+          ? `Reading page ${batch.pages_done} of ${batch.pages_total}…`
+          : 'Reading the pages…';
+      case 'ready':
+        return 'Ready to check';
+      default:
+        return null;
+    }
+  }
+
+  readonly retryingId = signal<number | null>(null);
+
+  /** Read a failed upload again, without sending the file a second time. */
+  retry(batchId: number): void {
+    this.retryingId.set(batchId);
+    this.errorMessage.set(null);
+
+    this.ingest.retry(batchId).subscribe({
+      next: () => {
+        this.retryingId.set(null);
+        this.watch(batchId);
+        this.refresh();
+      },
+      error: (response: HttpErrorResponse) => {
+        this.retryingId.set(null);
+        this.errorMessage.set(response.error?.message ?? 'Could not try that upload again.');
+      },
+    });
   }
 
   batchStatus(batch: IngestBatch): 'completed' | 'failed' | 'loading' | 'pending' {

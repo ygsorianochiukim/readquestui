@@ -15,6 +15,11 @@ preference to the synthesised ones.
 | `celebrate.mp3`   | A badge, an achievement, or a finished book              | Little arpeggio fanfare         |
 | `level-up.mp3`    | Reserved for milestone reveals                           | Ascending sparkle               |
 | `tap.mp3`         | Small confirmations (revealing a hint, entering a book)  | Soft blip                       |
+| `yey.mp3`         | Kids cheering "yey!" — a chapter, its Read story step, or a book finished | Two voices swooping up |
+| `yippee.mp3`      | "Yippee!" — a game won or a quiz passed                  | Hop and a long happy squeal     |
+| `party-popper.mp3`| The confetti cannons at both sides of the screen         | Bright pop with sparkles        |
+| `reading-wrong.mp3`| A read-aloud below the pass mark                        | Gentle "uh-oh"                  |
+| `not-passed.mp3`  | A quiz not passed                                        | Soft "wah-wah-wah"              |
 | `background.mp3`  | Looping music on the reading screens                     | Gentle pentatonic tune over a pad |
 
 Whether a cue came from its file or was synthesised is remembered for the

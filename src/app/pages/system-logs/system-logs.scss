@@ -1,100 +1,9 @@
 @use 'abstracts' as *;
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-3);
-  padding-bottom: var(--space-4);
-  margin-bottom: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+// Filters, table and pager are the shared ones (styles/_tables.scss).
 
-  &__field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    min-width: 160px;
-
-    &--grow {
-      flex: 1;
-      min-width: 200px;
-    }
-
-    select,
-    input {
-      @include form-control;
-    }
-  }
-
-  &__label {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  &__actions {
-    display: flex;
-    gap: var(--space-2);
-  }
-
-  &__button {
-    padding: 0.6rem var(--space-4);
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-primary);
-    background: var(--color-primary);
-    color: #fff;
-    font-weight: 700;
-    cursor: pointer;
-
-    &--ghost {
-      background: transparent;
-      color: var(--color-primary);
-    }
-  }
-}
-
-.table-wrap {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-sm);
-
-  th {
-    text-align: left;
-    font-weight: 600;
-    color: var(--color-text-muted);
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-    white-space: nowrap;
-  }
-
-  td {
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-    vertical-align: top;
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
-
-  &__when {
-    white-space: nowrap;
-    color: var(--color-text-soft);
-  }
-
-  &__details {
-    min-width: 260px;
-    color: var(--color-text);
-  }
-
-  &__ip {
-    color: var(--color-text-soft);
-    white-space: nowrap;
-  }
+.details {
+  min-width: 260px;
 }
 
 /* Action pill, tinted by the group the action belongs to. */
@@ -134,31 +43,3 @@
   }
 }
 
-.pager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-top: var(--space-4);
-
-  &__info {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  &__button {
-    padding: 0.5rem var(--space-4);
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font-weight: 700;
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-  }
-}

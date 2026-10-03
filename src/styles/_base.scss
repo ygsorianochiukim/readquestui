@@ -32,11 +32,11 @@ body {
 
 h1, h2, h3, h4 {
   margin: 0;
-  // Irish Grover is a single-weight display font, so use its natural weight
-  // and add a little letter-spacing so headings stay legible.
+  // Fredoka: round and chunky, easy for early readers. Semi-bold reads as
+  // a heading without the letters closing up.
   font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--color-text);
   line-height: var(--line-height-tight);
   // A long chapter title should break at a word, not mid-word, on a phone.

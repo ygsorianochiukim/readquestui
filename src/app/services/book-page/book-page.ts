@@ -50,6 +50,21 @@ export class BookPageService {
     );
   }
 
+  /** Add a page by typing its sentences into a chapter. */
+  addText(bookId: number, chapterId: number, text: string): Observable<ApiResponse<BookPage>> {
+    return this.http.post<ApiResponse<BookPage>>(`${this.base}/books/${bookId}/pages/text`, {
+      chapter_id: chapterId,
+      text,
+    });
+  }
+
+  /** Cut a chapter's story text into pages, a few sentences to a page. */
+  generate(chapterId: number, sentencesPerPage = 5): Observable<ApiResponse<BookPage[]>> {
+    return this.http.post<ApiResponse<BookPage[]>>(`${this.base}/chapters/${chapterId}/pages/generate`, {
+      sentences_per_page: sentencesPerPage,
+    });
+  }
+
   updateText(pageId: number, text: string): Observable<ApiResponse<BookPage>> {
     return this.http.put<ApiResponse<BookPage>>(`${this.base}/pages/${pageId}`, { text });
   }

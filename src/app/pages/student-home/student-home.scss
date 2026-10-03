@@ -16,12 +16,6 @@
     text-shadow: 0 2px 6px rgba(20, 40, 90, 0.4);
   }
 
-  &__wave {
-    vertical-align: middle;
-    animation: wave 2.2s ease-in-out infinite;
-    transform-origin: 70% 70%;
-  }
-
   &__subtitle {
     color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
@@ -36,15 +30,14 @@
   &__scene {
     position: relative;
     height: clamp(320px, 46vh, 460px);
-    border-radius: var(--radius-lg);
+    border-radius: 32px;
     overflow: hidden;
-    // The illustrated adventure world, framed like a game scene.
+    // The illustrated adventure world, in the same thick white frame as the cards.
     background: url('/map.png') center/cover no-repeat;
-    // Chunky "wooden frame" look.
     border: 6px solid #fff;
     box-shadow:
-      0 0 0 4px rgba(255, 176, 31, 0.9),
-      0 16px 34px rgba(20, 40, 90, 0.4);
+      0 8px 0 rgba(31, 45, 90, 0.18),
+      0 18px 34px rgba(20, 40, 90, 0.3);
   }
 
   // Location banner, top-centre.
@@ -85,6 +78,23 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    transition: transform 0.15s ease;
+
+    &:hover,
+    &:focus-visible {
+      transform: scale(1.06);
+    }
+
+    &:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 4px;
+      border-radius: var(--radius-md);
+    }
   }
 
   &__bubble {
@@ -180,6 +190,63 @@
   }
 }
 
+// ---- World scene on a phone ----------------------------------------------
+// The banner, the LEVEL badge, the mascot and the play button all share a
+// narrow scene: the title goes left (two lines if it needs them) to clear the
+// badge, and the play button goes right to clear the mascot.
+@media (max-width: $breakpoint-sm) {
+  .world__banner {
+    left: 12px;
+    right: 96px;
+    max-width: none;
+    transform: none;
+    padding: 8px 14px;
+    border-radius: 18px;
+    text-align: left;
+  }
+
+  .world__place {
+    font-size: 1.05rem;
+    @include clamp-lines(2);
+  }
+
+  .world__level {
+    top: 12px;
+    right: 12px;
+    padding: 6px 12px;
+
+    b { font-size: 1.3rem; }
+  }
+
+  .world__mascot {
+    left: 12px;
+    bottom: 12px;
+  }
+
+  .world__play,
+  .world__done {
+    left: auto;
+    right: 12px;
+    bottom: 16px;
+    transform: none;
+  }
+
+  .world__play {
+    padding: 10px 18px;
+    font-size: 1.1rem;
+
+    &:hover { transform: translateY(-2px); }
+    &:active { transform: translateY(3px); }
+  }
+
+  .world__play-bar { width: 40px; }
+
+  .world__done {
+    padding: 10px 16px;
+    font-size: 1rem;
+  }
+}
+
 // ---- Weekly quests panel -------------------------------------------------
 .wq {
   margin-top: var(--space-3);
@@ -266,173 +333,312 @@
 // ---- Stat tiles ----------------------------------------------------------
 .tiles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-3);
+
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: repeat(3, 1fr);
+  }
 
   @media (max-width: $breakpoint-sm) {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
+// Chunky, pressable boxes: a coloured "base" under each, like a game button.
 .tile {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   padding: var(--space-4) var(--space-2);
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--shadow-md);
-  border-bottom: 4px solid rgba(0, 0, 0, 0.06);
+  // Pastel card in a thick white frame, like the activity cards in a kids' game.
+  border: 4px solid #fff;
+  border-radius: 26px;
+  background: var(--tile-bg, #fff);
+  box-shadow: 0 6px 0 var(--tile-base, rgba(0, 0, 0, 0.08)), 0 12px 22px rgba(31, 45, 90, 0.16);
+  font: inherit;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 
   &__icon { margin-bottom: 4px; }
 
   &__value {
     font-family: var(--font-display);
-    font-size: 1.4rem;
+    font-weight: 700;
+    font-size: 1.45rem;
+    line-height: 1.1;
     color: var(--color-text);
   }
 
   &__label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-text-muted);
-  }
-
-  &--coins { border-bottom-color: #ffb01f; }
-  &--books { border-bottom-color: var(--color-primary); }
-  &--badges { border-bottom-color: var(--color-pink); }
-  &--progress { border-bottom-color: var(--color-success); }
-
-  &--trophies {
-    border-bottom-color: var(--color-orange);
-    font: inherit;
-    cursor: pointer;
-
-    &:hover { transform: translateY(-3px); }
-  }
-}
-
-// ---- Panels --------------------------------------------------------------
-.panel {
-  padding: var(--space-5);
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--shadow-md);
-
-  &__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-4);
-  }
-
-  &__title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: var(--font-display);
-    font-size: var(--font-size-lg);
-    color: var(--color-text);
-  }
-
-  &__empty {
-    color: var(--color-text-muted);
-    font-size: var(--font-size-sm);
-  }
-}
-
-// ---- Mini quest chips ----------------------------------------------------
-.quests {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--space-3);
-}
-
-.mini {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: var(--space-4) var(--space-3);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: #fff;
-  cursor: pointer;
-  transition: transform 0.12s ease, border-color 0.12s ease;
-
-  &:hover:not(&--locked) {
-    transform: translateY(-3px);
-    border-color: var(--color-primary);
-  }
-
-  &__icon { margin-bottom: 6px; }
-
-  &__title {
-    font-weight: 700;
-    font-size: 0.8rem;
-    text-align: center;
-    color: var(--color-text);
-    @include clamp-lines(2);
-  }
-
-  &__pct {
+    margin-top: 2px;
     font-size: 0.7rem;
     font-weight: 800;
-    color: var(--color-primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    text-align: center;
   }
 
-  &--locked {
-    cursor: not-allowed;
-    opacity: 0.6;
-    .mini__pct { color: var(--color-text-soft); }
+  // Badges and trophies side by side in one box.
+  &__pair {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-bottom: 4px;
   }
 
-  &--done {
-    border-color: var(--color-success);
-    .mini__pct { color: var(--color-success); }
+  &__half {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+
+    .tile__value { font-size: 1.15rem; }
+  }
+
+  &--coins { --tile-base: #f2b100; --tile-bg: linear-gradient(160deg, #fff8d6, #ffeaa0); }
+  &--books { --tile-base: #5b8de8; --tile-bg: linear-gradient(160deg, #eaf2ff, #cfe0ff); }
+  &--progress { --tile-base: #2fb36b; --tile-bg: linear-gradient(160deg, #e6fbef, #c3f0d6); }
+  &--rewards { --tile-base: #e54b93; --tile-bg: linear-gradient(160deg, #ffeaf3, #ffcde3); }
+  &--quests { --tile-base: #f08a3c; --tile-bg: linear-gradient(160deg, #fff0e3, #ffd6b5); }
+
+  &--rewards,
+  &--quests {
+    cursor: pointer;
+
+    &:hover {
+      transform: translateY(-3px);
+    }
+
+    &:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 var(--tile-base), 0 6px 12px rgba(31, 45, 90, 0.16);
+    }
+
+    &:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 3px;
+    }
   }
 }
 
-// ---- Treasure / badges ---------------------------------------------------
-.treasure {
+// ---- Continue where you left off -------------------------------------------
+.resume {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-.treasure__item {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  width: 92px;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: linear-gradient(160deg, #fff7e0, #ffe9b8);
-  border: 2px solid #ffd884;
-  text-align: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4);
+  border: 4px solid #fff;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #fffbe9 0%, #ffeec2 100%);
+  box-shadow: 0 6px 0 #ffb01f, 0 14px 26px rgba(31, 45, 90, 0.18);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover { transform: translateY(-3px); }
+
+  &:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #ffb01f, 0 6px 12px rgba(31, 45, 90, 0.18);
+  }
+
+  &:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 3px;
+  }
+
+  &__cover {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 88px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: linear-gradient(160deg, #e9f1fe, #d7e5ff);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #d98e12;
+  }
+
+  &__title {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--color-text);
+    @include clamp-lines(1);
+  }
+
+  &__where {
+    font-weight: 700;
+    color: var(--color-text-muted);
+  }
+
+  &__bar {
+    height: 10px;
+    margin-top: 6px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: #f1e4c8;
+
+    span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #ffc83d, #ff9e2c);
+    }
+  }
+
+  &__go {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 12px 18px;
+    border-radius: 18px;
+    background: linear-gradient(160deg, #4ad48a, #22a85c);
+    box-shadow: 0 4px 0 #17803f;
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  @media (max-width: $breakpoint-sm) {
+    &__cover { width: 56px; height: 68px; }
+    &__go span { display: none; }
+  }
 }
 
-.treasure__icon { margin-bottom: 4px; }
+// ---- Active now ----------------------------------------------------------
+.presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: var(--space-2);
+  padding: 4px 12px 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 3px 0 rgba(23, 128, 63, 0.35);
+  color: #17803f;
+  font-family: var(--font-family);
+  font-size: 0.8rem;
+  font-weight: 800;
+  vertical-align: middle;
+  text-shadow: none;
 
-.treasure__name {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #7a5a12;
-  @include clamp-lines(2);
+  &__dot {
+    position: relative;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c06b;
+
+    // A soft ring that keeps pulsing: they are here, right now.
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: #22c06b;
+      animation: presence-pulse 1.8s ease-out infinite;
+    }
+  }
+}
+
+@keyframes presence-pulse {
+  from { transform: scale(1); opacity: 0.7; }
+  to { transform: scale(2.6); opacity: 0; }
 }
 
 // ---- Animations ----------------------------------------------------------
-@keyframes wave {
-  0%, 60%, 100% { transform: rotate(0deg); }
-  10%, 30% { transform: rotate(14deg); }
-  20% { transform: rotate(-8deg); }
+@media (prefers-reduced-motion: reduce) {
+  .presence__dot::after,
+  .world__buddy { animation: none; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hub__wave,
-  .world__buddy { animation: none; }
+// ---- "Let's read!" chooser ----
+.letsread__book {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.letsread {
+  display: grid;
+  gap: var(--space-3);
+
+  &__choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: 2px solid var(--color-border, #e3e8f2);
+    border-radius: var(--radius-lg, 16px);
+    background: var(--color-surface, #fff);
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      transform 0.15s ease,
+      border-color 0.15s ease;
+
+    &:hover,
+    &:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--color-primary, #4f7ef0);
+    }
+
+    &--continue {
+      border-color: #34c37a;
+      background: #effcf5;
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+
+    b {
+      font-size: 1.05rem;
+    }
+
+    small {
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+  }
 }

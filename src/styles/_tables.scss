@@ -1,0 +1,312 @@
+// =============================================================
+//  Data tables
+//  One look for every table on the teacher dashboard: a filter
+//  bar above, the table, and <app-table-pager> below. Global so
+//  every list reads the same way.
+//
+//    <div class="table-filters">…fields…</div>
+//    <div class="table-wrap"><table class="table">…</table></div>
+//    <app-table-pager … />
+// =============================================================
+
+@use 'abstracts' as *;
+
+// ---- Filter bar ------------------------------------------------------
+
+.table-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+
+  // On its own card (above the table's card), no rule underneath.
+  &--alone {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: 0;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 11rem;
+
+    &--grow {
+      flex: 1;
+      min-width: 14rem;
+    }
+
+    &--date {
+      min-width: 9.5rem;
+    }
+  }
+
+  &__label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  &__control {
+    @include form-control;
+  }
+
+  // A search box with its magnifier inside.
+  &__search {
+    position: relative;
+
+    app-icon {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      color: var(--color-text-soft);
+      pointer-events: none;
+    }
+
+    .table-filters__control {
+      padding-left: 38px;
+    }
+  }
+
+  &__checks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px; // matches the controls beside it
+  }
+
+  // A checkbox drawn as a chip that lights up when on.
+  &__check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:has(input:checked) {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+      color: var(--color-primary-dark);
+    }
+  }
+
+  &__end {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-left: auto;
+    min-height: 44px;
+  }
+}
+
+// ---- Table -----------------------------------------------------------
+
+// Scrolls sideways on a narrow screen rather than squashing the columns.
+.table-wrap {
+  overflow-x: auto;
+  transition: opacity 0.15s ease;
+
+  &--loading {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-sm);
+
+  th {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    background: #f7f9fd;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    &:first-child {
+      border-top-left-radius: var(--radius-md);
+    }
+    &:last-child {
+      border-top-right-radius: var(--radius-md);
+    }
+  }
+
+  td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:nth-child(even) td {
+    background: #fbfcfe;
+  }
+
+  tbody tr {
+    transition: background-color 0.12s ease;
+  }
+
+  tbody tr:hover td {
+    background: #f3f7fe;
+  }
+
+  // A row that opens something when clicked.
+  &__row--click {
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: -2px;
+    }
+  }
+
+  &__row--open td {
+    background: var(--color-primary-soft) !important;
+  }
+
+  &__row--open td:first-child {
+    box-shadow: inset 3px 0 0 var(--color-primary);
+  }
+
+  // A cell holding nothing but a message (loading, empty).
+  &__message td,
+  td.table__message {
+    padding: var(--space-5);
+    background: transparent !important;
+  }
+
+  &__strong {
+    font-weight: 700;
+  }
+
+  &__muted {
+    color: var(--color-text-muted) !important;
+  }
+
+  &__nowrap {
+    white-space: nowrap;
+  }
+
+  &__num,
+  th.table__num {
+    text-align: center;
+  }
+
+  &__right,
+  th.table__right {
+    text-align: right;
+  }
+
+  &__action {
+    width: 1%;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  // A person: initials in a circle, then their name.
+  &__person {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  &__avatar {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(160deg, #6fa8ff, var(--color-primary));
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+
+  // "Review ›" at the end of a clickable row.
+  &__open {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--color-primary);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  // A yes/no column: a green tick or a soft dash.
+  &__yes {
+    display: inline-flex;
+    color: var(--color-success);
+  }
+
+  &__no {
+    color: var(--color-text-soft);
+  }
+}
+
+// ---- Pills -----------------------------------------------------------
+
+// A score: green passed, red not passed, grey not judged yet.
+.score-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 3rem;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: #eef1f7;
+  color: var(--color-text);
+  font-weight: 800;
+  font-size: 0.9rem;
+  white-space: nowrap;
+
+  &--passed {
+    background: #e6f8ee;
+    color: var(--color-success);
+  }
+  &--failed {
+    background: #fdeaee;
+    color: var(--color-danger);
+  }
+}
+
+// A stars count, as on the student screens.
+.points-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: #fff6d8;
+  color: #8a6100;
+  font-weight: 800;
+  white-space: nowrap;
+}

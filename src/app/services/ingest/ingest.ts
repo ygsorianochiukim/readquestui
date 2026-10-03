@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable, from, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
@@ -51,20 +51,40 @@ export class IngestService {
     return this.http.get<IngestListResponse>(`${this.base}/ingest`);
   }
 
-  /** Send a PDF, or a set of page photos. */
-  start(files: File[], title?: string | null, bookId?: number): Observable<ApiResponse<IngestBatch>> {
-    const form = new FormData();
+  /**
+   * Send a PDF, or a set of page photos. Photos are shrunk first — a stack of
+   * full-size phone shots is tens of megabytes, and most of the wait was
+   * sending them. Emits the HTTP events so the screen can show how far the
+   * send has got; unsubscribing cancels it.
+   */
+  start(
+    files: File[],
+    title?: string | null,
+    bookId?: number,
+  ): Observable<HttpEvent<ApiResponse<IngestBatch>>> {
+    const prepared = Promise.all(
+      files.map((file) => (file.type === 'application/pdf' ? file : prepareForScan(file))),
+    );
 
-    files.forEach((file) => form.append('files[]', file, file.name));
+    return from(prepared).pipe(
+      switchMap((ready) => {
+        const form = new FormData();
 
-    if (title) {
-      form.append('title', title);
-    }
-    if (bookId) {
-      form.append('book_id', String(bookId));
-    }
+        ready.forEach((file) => form.append('files[]', file, file.name));
 
-    return this.http.post<ApiResponse<IngestBatch>>(`${this.base}/ingest`, form);
+        if (title) {
+          form.append('title', title);
+        }
+        if (bookId) {
+          form.append('book_id', String(bookId));
+        }
+
+        return this.http.post<ApiResponse<IngestBatch>>(`${this.base}/ingest`, form, {
+          reportProgress: true,
+          observe: 'events',
+        });
+      }),
+    );
   }
 
   /** Poll while it is being read; the same call is the preview once it is done. */
@@ -108,6 +128,11 @@ export class IngestService {
       chapters: options.chapters ?? null,
       parts: options.parts ?? null,
     });
+  }
+
+  /** Read a failed upload again, from the file already on the server. */
+  retry(batchId: number): Observable<ApiResponse<IngestBatch>> {
+    return this.http.post<ApiResponse<IngestBatch>>(`${this.base}/ingest/${batchId}/retry`, {});
   }
 
   /** Throw the draft away. */

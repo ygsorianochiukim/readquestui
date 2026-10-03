@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -18,6 +18,9 @@ import {
   PageHeader,
   Spinner,
   StatusIndicator,
+  TablePager,
+  storedPageSize,
+  storePageSize,
 } from '../../shared/components';
 
 /**
@@ -28,9 +31,11 @@ import {
  * words each child got wrong, the recording itself, and one place to overrule
  * a score the machine got wrong.
  */
+
 @Component({
   selector: 'app-pronunciation-review',
   imports: [
+    DatePipe,
     DecimalPipe,
     FormsModule,
     RouterLink,
@@ -42,6 +47,7 @@ import {
     PageHeader,
     Spinner,
     StatusIndicator,
+    TablePager,
   ],
   templateUrl: './pronunciation-review.html',
   styleUrl: './pronunciation-review.scss',
@@ -59,11 +65,29 @@ export class PronunciationReview implements OnInit {
   readonly pendingCount = signal(0);
   readonly currentPage = signal(1);
   readonly lastPage = signal(1);
+  readonly total = signal(0);
+
+  /** How many readings a page of the table shows; remembered on this device. */
+  readonly perPage = signal(storedPageSize('read-aloud-review'));
 
   // Filters
   readonly studentFilter = signal<number | null>(null);
   readonly statusFilter = signal<'pending' | 'reviewed' | ''>('pending');
   readonly onlyFailed = signal(false);
+  readonly offScript = signal(false);
+  readonly fromDate = signal('');
+  readonly toDate = signal('');
+
+  /** Whether anything differs from how the page opens, so "Clear" means something. */
+  readonly filtersChanged = computed(
+    () =>
+      this.studentFilter() !== null ||
+      this.statusFilter() !== 'pending' ||
+      this.onlyFailed() ||
+      this.offScript() ||
+      !!this.fromDate() ||
+      !!this.toDate(),
+  );
 
   /** The attempt open in the detail panel. */
   readonly selected = signal<PronunciationAttempt | null>(null);
@@ -73,8 +97,6 @@ export class PronunciationReview implements OnInit {
   // never looks like a saved one.
   readonly overrideScore = signal<number | null>(null);
   readonly overrideNote = signal('');
-
-  readonly hasMore = computed(() => this.currentPage() < this.lastPage());
 
   /** The words this child got wrong in the open attempt. */
   readonly missedWords = computed(
@@ -93,7 +115,7 @@ export class PronunciationReview implements OnInit {
   load(page = 1): void {
     this.loading.set(true);
 
-    const filters: ReviewQueueFilters = { page };
+    const filters: ReviewQueueFilters = { page, perPage: this.perPage() };
 
     if (this.studentFilter()) {
       filters.studentId = this.studentFilter()!;
@@ -104,13 +126,23 @@ export class PronunciationReview implements OnInit {
     if (this.onlyFailed()) {
       filters.onlyFailed = true;
     }
+    if (this.offScript()) {
+      filters.offScript = true;
+    }
+    if (this.fromDate()) {
+      filters.from = this.fromDate();
+    }
+    if (this.toDate()) {
+      filters.to = this.toDate();
+    }
 
     this.service.queue(filters).subscribe({
       next: (response) => {
         this.attempts.set(response.data);
         this.pendingCount.set(response.meta.pending);
         this.currentPage.set(response.meta.current_page);
-        this.lastPage.set(response.meta.last_page);
+        this.lastPage.set(Math.max(1, response.meta.last_page));
+        this.total.set(response.meta.total);
         this.loading.set(false);
       },
       error: (response: HttpErrorResponse) => {
@@ -125,10 +157,31 @@ export class PronunciationReview implements OnInit {
     this.load(1);
   }
 
-  nextPage(): void {
-    if (this.hasMore()) {
-      this.load(this.currentPage() + 1);
+  clearFilters(): void {
+    this.studentFilter.set(null);
+    this.statusFilter.set('pending');
+    this.onlyFailed.set(false);
+    this.offScript.set(false);
+    this.fromDate.set('');
+    this.toDate.set('');
+    this.applyFilters();
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.lastPage() && page !== this.currentPage()) {
+      this.load(page);
     }
+  }
+
+  setPageSize(size: number): void {
+    this.perPage.set(size);
+    storePageSize('read-aloud-review', size);
+    this.load(1);
+  }
+
+  initials(attempt: PronunciationAttempt): string {
+    const student = attempt.student;
+    return student ? `${student.first_name?.[0] ?? ''}${student.last_name?.[0] ?? ''}`.toUpperCase() : '?';
   }
 
   /** Open one reading in full — every word, and the recording. */
@@ -215,11 +268,17 @@ export class PronunciationReview implements OnInit {
 
   /** What the child was reading, in a form a teacher can place. */
   source(attempt: PronunciationAttempt): string {
+    const page = attempt.book_page ? `Page ${attempt.book_page.page_number}` : null;
+
     if (attempt.chapter) {
-      return `Chapter ${attempt.chapter.chapter_number}: ${attempt.chapter.title}`;
+      const chapter = `Chapter ${attempt.chapter.chapter_number}`;
+      const title = attempt.chapter.title?.trim();
+      // "Chapter 1", not "Chapter 1: Chapter 1", when the title says nothing more.
+      const name = title && title.toLowerCase() !== chapter.toLowerCase() ? `${chapter}: ${title}` : chapter;
+      return page ? `${name} · ${page}` : name;
     }
-    if (attempt.book_page) {
-      return `Page ${attempt.book_page.page_number}`;
+    if (page) {
+      return page;
     }
     return 'Reading';
   }

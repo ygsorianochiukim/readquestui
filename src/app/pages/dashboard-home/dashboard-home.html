@@ -9,6 +9,13 @@
       </div>
     </app-card>
     <app-card>
+      <div class="stat stat--present">
+        <span class="stat__value">{{ dash.stats.present_today }}<small>/{{ dash.stats.students }}</small></span>
+        <span class="stat__label"><app-icon name="check-circle" size="sm" /> Here today</span>
+        <span class="stat__note">{{ dash.stats.online_now }} active now</span>
+      </div>
+    </app-card>
+    <app-card>
       <div class="stat">
         <span class="stat__value">{{ dash.stats.active_books }}</span>
         <span class="stat__label"><app-icon name="books" size="sm" /> Active books</span>
@@ -45,36 +52,106 @@
         title="No students yet"
         message="Add pupils and assign books to start tracking reading progress." />
     } @else {
+      <div class="table-filters">
+        <label class="table-filters__field table-filters__field--grow">
+          <span class="table-filters__label">Search</span>
+          <span class="table-filters__search">
+            <app-icon name="search" size="sm" />
+            <input
+              class="table-filters__control"
+              type="search"
+              placeholder="Pupil name…"
+              [ngModel]="search()"
+              (ngModelChange)="setSearch($event)" />
+          </span>
+        </label>
+
+        <label class="table-filters__field">
+          <span class="table-filters__label">Reading level</span>
+          <select class="table-filters__control" [ngModel]="levelFilter()" (ngModelChange)="setLevel($event)">
+            <option value="">All levels</option>
+            @for (level of levels(); track level) {
+              <option [value]="level">{{ level }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="table-filters__field">
+          <span class="table-filters__label">Progress</span>
+          <select class="table-filters__control" [ngModel]="progressFilter()" (ngModelChange)="setProgress($event)">
+            <option value="">Everyone</option>
+            <option value="not-started">Not started</option>
+            <option value="reading">Reading</option>
+            <option value="finished">Finished</option>
+          </select>
+        </label>
+
+        @if (filtersChanged()) {
+          <div class="table-filters__end">
+            <app-button variant="ghost" (clicked)="clearFilters()">
+              <app-icon name="clear" size="sm" /> Clear filters
+            </app-button>
+          </div>
+        }
+      </div>
+
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Reading level</th>
-              <th>Books</th>
-              <th>Progress</th>
-              <th>Points</th>
-              <th class="table__right">Actions</th>
+              <th scope="col">Name</th>
+              <th scope="col">Today</th>
+              <th scope="col">Reading level</th>
+              <th scope="col" class="table__num">Books</th>
+              <th scope="col">Progress</th>
+              <th scope="col" class="table__num">Points</th>
+              <th scope="col" class="table__action" aria-label="Open"></th>
             </tr>
           </thead>
           <tbody>
-            @for (student of dash.students; track student.id) {
-              <tr>
-                <td class="table__strong">{{ student.full_name }}</td>
+            @for (student of pagedStudents(); track student.id) {
+              <tr class="table__row--click" tabindex="0" (click)="goProgress(student)" (keydown.enter)="goProgress(student)">
+                <td>
+                  <span class="table__person">
+                    <span class="table__avatar" aria-hidden="true">{{ initials(student.full_name) }}</span>
+                    {{ student.full_name }}
+                  </span>
+                </td>
+                <td>
+                  <app-presence
+                    [online]="student.is_online"
+                    [presentToday]="student.is_present_today"
+                    [lastSeen]="student.last_seen_at" />
+                </td>
                 <td>{{ student.reading_level || '—' }}</td>
-                <td>{{ student.completed_books }} / {{ student.assigned_books }}</td>
-                <td class="table__progress">
+                <td class="table__num">{{ student.completed_books }} / {{ student.assigned_books }}</td>
+                <td class="progress-cell">
                   <app-progress-bar [percent]="student.percent" />
                 </td>
-                <td><app-icon name="star" size="sm" /> {{ student.points }}</td>
-                <td class="table__right">
-                  <app-button variant="ghost" (clicked)="goProgress(student)">View</app-button>
+                <td class="table__num">
+                  <span class="points-pill"><app-icon name="star" size="sm" /> {{ student.points }}</span>
+                </td>
+                <td class="table__action">
+                  <span class="table__open">View <app-icon name="forward" size="sm" /></span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="table__message">
+                  <app-empty-state icon="search" title="No pupils match" message="Try another name, or clear the filters." />
                 </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
+
+      <app-table-pager
+        [page]="currentPage()"
+        [perPage]="perPage()"
+        [total]="filteredStudents().length"
+        (pageChange)="page.set($event)"
+        (perPageChange)="setPageSize($event)" />
     }
   </app-card>
 } @else {

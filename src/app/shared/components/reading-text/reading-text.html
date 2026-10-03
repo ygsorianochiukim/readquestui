@@ -1,5 +1,8 @@
 <p class="reading reading--{{ size() }}" role="group" aria-label="Reading passage">
   @for (word of words(); track word.index) {
+    @if (word.newLine) {
+      <br />
+    }
     @if (canRetry(word)) {
       <button
         type="button"

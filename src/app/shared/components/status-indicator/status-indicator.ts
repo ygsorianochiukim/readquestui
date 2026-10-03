@@ -26,7 +26,9 @@ const PRESETS: Record<Status, { icon: IconName; label: string }> = {
   passed: { icon: 'check-circle', label: 'Passed' },
   failed: { icon: 'retry', label: 'Not passed yet' },
   loading: { icon: 'gauge', label: 'Working…' },
-  pending: { icon: 'gauge', label: 'Waiting…' },
+  // Waiting on a person (a teacher's review), not on the computer: a clock,
+  // never a spinner, or it reads as a screen that is stuck loading.
+  pending: { icon: 'clock', label: 'Needs review' },
   completed: { icon: 'check-double', label: 'Completed' },
   locked: { icon: 'locked', label: 'Locked' },
   'in-progress': { icon: 'play', label: 'In progress' },
@@ -48,7 +50,5 @@ export class StatusIndicator {
 
   readonly preset = computed(() => PRESETS[this.status()]);
   readonly text = computed(() => this.label() ?? this.preset().label);
-  readonly spinning = computed(
-    () => this.status() === 'loading' || this.status() === 'pending',
-  );
+  readonly spinning = computed(() => this.status() === 'loading');
 }

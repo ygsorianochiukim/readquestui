@@ -13,6 +13,7 @@ import { CelebrationService } from '../../services/celebration/celebration';
 import { CheerService } from '../../services/cheer/cheer';
 import { ThemeService } from '../../services/theme/theme';
 import { PronunciationService } from '../../services/pronunciation/pronunciation';
+import { ReadingPlaceService } from '../../services/reading-place/reading-place';
 import {
   BookPage,
   ReadAloudSummary,
@@ -43,8 +44,9 @@ import { MissingWord } from './missing-word/missing-word';
 import { SentenceBuilder } from './sentence-builder/sentence-builder';
 
 /**
- * A chapter is read a page at a time — picked from the chapter's own page map,
- * listened to, and read aloud — and then played and quizzed on as a whole.
+ * A chapter's story is read a page at a time — picked from the chapter's own
+ * page map, listened to, and read aloud — and then played and quizzed on as a
+ * whole: Read story, Game, Quiz.
  */
 type StepKey = 'pages' | 'game' | 'quiz';
 
@@ -73,9 +75,9 @@ interface QuizFeedback {
 const CHAPTER_HEADING = /^chapter\s+[\w-]+\b.{0,60}$/i;
 
 /**
- * One page of the chapter as the child sees it: a paragraph of a scan, read,
- * heard and scored on its own. A whole chapter at once is too much for a young
- * reader; a few lines at a time is not.
+ * One page of the chapter as the child sees it — the same page the teacher
+ * sees — read, heard and scored on its own. A whole chapter at once is too
+ * much for a young reader; a page at a time is not.
  */
 interface ReadingPage {
   key: string;
@@ -127,6 +129,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
   private cheers = inject(CheerService);
   private themes = inject(ThemeService);
   private pronunciationService = inject(PronunciationService);
+  private places = inject(ReadingPlaceService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -140,6 +143,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly errorMessage = signal<string | null>(null);
 
   readonly title = signal('');
+  private bookTitle = '';
   readonly chapterNumber = signal(0);
   readonly storyText = signal<string | null>(null);
   readonly imageUrl = signal<string | null>(null);
@@ -156,7 +160,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
   readonly steps = computed(() => [
     {
       key: 'pages' as const,
-      label: 'Pages',
+      label: 'Read story',
       icon: 'book',
       done: this.storyRead() && this.pronunciationPassed(),
     },
@@ -428,6 +432,7 @@ export class ChapterActivities implements OnInit, OnDestroy {
         }
 
         this.title.set(chapter?.title ?? node?.title ?? 'Chapter');
+        this.bookTitle = reader.data.title ?? '';
         this.chapterNumber.set(chapter?.chapter_number ?? node?.chapter_number ?? 0);
         const pages = (reader.data.pages ?? [])
           .filter((page) => page.chapter_id === this.chapterId)
@@ -469,19 +474,16 @@ export class ChapterActivities implements OnInit, OnDestroy {
   }
 
   /**
-   * The chapter cut into pages of one paragraph each, so a young reader faces
-   * a few lines at a time rather than a wall of words. A "Chapter 2" line is
-   * not a page of its own: it heads the page that follows it. A scan's picture
-   * goes with its first paragraph — or, on a scan with no words, with the next
-   * page that has some.
+   * The chapter's pages exactly as the teacher sees them: one book page, one
+   * page to hear and read aloud. A "Chapter 2" line is not read — it heads the
+   * page. A scan with no words gives its picture to the next page that has some.
    */
   private readingPagesOf(pages: BookPage[]): ReadingPage[] {
     const result: ReadingPage[] = [];
     let images: string[] = [];
-    let heading: string | null = null;
 
     for (const page of pages) {
-      const paragraphs = (page.text ?? '')
+      const lines = (page.text ?? '')
         .split(/\r?\n/)
         .map((line) => line.trim())
         .filter(Boolean);
@@ -489,22 +491,22 @@ export class ChapterActivities implements OnInit, OnDestroy {
       if (page.image_url) {
         images.push(page.image_url);
       }
-      if (paragraphs.length && CHAPTER_HEADING.test(paragraphs[0])) {
-        heading = paragraphs.shift() ?? heading;
+      const heading = lines.length && CHAPTER_HEADING.test(lines[0]) ? (lines.shift() ?? null) : null;
+
+      if (!lines.length) {
+        continue;
       }
 
-      paragraphs.forEach((text, paragraphIndex) => {
-        result.push({
-          key: `${page.id}:${paragraphIndex}`,
-          bookPageId: page.id,
-          paragraphIndex,
-          text,
-          images,
-          heading,
-        });
-        images = [];
-        heading = null;
+      result.push({
+        key: `${page.id}:0`,
+        bookPageId: page.id,
+        // The server counts a whole page as its one "paragraph".
+        paragraphIndex: 0,
+        text: lines.join('\n'),
+        images,
+        heading,
       });
+      images = [];
     }
 
     // A picture after the last words still belongs to the chapter.
@@ -550,6 +552,17 @@ export class ChapterActivities implements OnInit, OnDestroy {
       if (!this.readByPage()) {
         // A chapter with no pages is one page: its whole story.
         this.showPage(0);
+        return;
+      }
+
+      // "Continue reading": the first page not read yet (the last, once all are).
+      if (params.get('page') === 'next') {
+        const next = Math.min(this.firstUnread(), this.readingPages().length - 1);
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { page: next + 1 },
+          replaceUrl: true,
+        });
         return;
       }
 
@@ -623,11 +636,27 @@ export class ChapterActivities implements OnInit, OnDestroy {
     this.readIndex.set(target);
     this.pageOpen.set(true);
     this.layOutReadText();
+    this.rememberPlace(target);
 
     // Reaching the last page is reading the chapter through.
     if (!this.storyRead() && (!this.readByPage() || target === pages.length - 1)) {
       this.markStoryRead();
     }
+  }
+
+  /** So "Let's read!" on the home screen can bring the child back to this page. */
+  private rememberPlace(index: number): void {
+    const total = this.readingPages().length || 1;
+
+    this.places.remember({
+      bookId: this.bookId,
+      bookTitle: this.bookTitle,
+      kind: 'chapter',
+      chapterId: this.chapterId,
+      chapterTitle: `Chapter ${this.chapterNumber()}`,
+      page: index + 1,
+      pageLabel: `Page ${index + 1} of ${total}`,
+    });
   }
 
   private closePage(): void {
@@ -672,7 +701,11 @@ export class ChapterActivities implements OnInit, OnDestroy {
     // Only a change seen on this screen is cheered, not the state it opened in.
     const justCompleted = !this.loading() && !wasCompleted && this.completed();
     if (justCompleted) {
-      this.cheers.cheer('congrats', 'Congrats! Chapter complete!');
+      // A finished chapter: kids cheering, and party poppers at both sides.
+      this.cheers.cheer('congrats', 'Congrats! Chapter complete!', {
+        sound: 'yey',
+        confetti: ['sides', 'drop'],
+      });
     }
 
     return justCompleted;
@@ -877,7 +910,11 @@ export class ChapterActivities implements OnInit, OnDestroy {
         this.showScore.set(true);
 
         if (!wasPassed && this.pronunciationPassed() && this.readByPage()) {
-          this.cheers.cheer('congrats', 'Congrats! You read every page!');
+          // The "Read story" activity done: the same party as a finished chapter.
+          this.cheers.cheer('congrats', 'Congrats! You read every page!', {
+            sound: 'yey',
+            confetti: ['sides'],
+          });
         } else {
           this.cheers.forScore(response.data.effective_score, this.passMark);
         }
@@ -1072,7 +1109,10 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
         // Finishing the chapter has its own, bigger cheer.
         if (!finishedChapter) {
-          this.cheers.cheer('great', game?.perfect ? 'Perfect! Great job!' : undefined);
+          this.cheers.cheer('great', game?.perfect ? 'Perfect! Great job!' : undefined, {
+            sound: 'yippee',
+            confetti: ['drop'],
+          });
         }
 
         // Winning the game can finish the chapter, which can earn a badge.
@@ -1162,14 +1202,19 @@ export class ChapterActivities implements OnInit, OnDestroy {
         });
         this.quizSubmitting.set(false);
         const finishedChapter = this.applyProgress(result.progress);
-        this.audioCues.playResult(result.passed);
-
         if (!finishedChapter) {
           if (result.passed) {
-            this.cheers.cheer('congrats', 'Congrats! You passed the quiz!');
+            this.cheers.cheer('congrats', 'Congrats! You passed the quiz!', {
+              sound: 'yippee',
+              confetti: ['drop'],
+            });
           } else {
-            this.cheers.cheer('try-again', 'Try the quiz again!');
+            this.cheers.cheer('try-again', 'Try the quiz again!', { sound: 'not-passed' });
           }
+        } else {
+          // The chapter's own cheer has the confetti and the "yey"; the quiz
+          // still gets its "yippee", once the cheering has died down.
+          setTimeout(() => this.audioCues.play('yippee', 0.7), 1200);
         }
         // A passed quiz can finish the chapter — and the book behind it.
         this.celebrationService.push(response.celebrations);

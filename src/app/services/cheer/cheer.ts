@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { AudioService } from '../audio/audio';
+import { AudioService, SoundName } from '../audio/audio';
+import { ConfettiKind, ConfettiService } from '../confetti/confetti';
 
 /**
  * How well it went.
@@ -9,6 +10,12 @@ import { AudioService } from '../audio/audio';
  * `try-again` for falling short — said kindly, never as a telling-off.
  */
 export type CheerTier = 'congrats' | 'great' | 'keep-going' | 'try-again';
+
+/** What else happens with a cheer: a sound effect, and confetti. */
+export interface CheerEffects {
+  sound?: SoundName;
+  confetti?: ConfettiKind[];
+}
 
 export interface Cheer {
   /** Bumped per cheer, so the same words twice in a row still replay the pop. */
@@ -32,32 +39,48 @@ const EMOJI: Record<CheerTier, string[]> = {
   'try-again': ['💪', '🙂', '🌈'],
 };
 
-/** Long enough to read and hear, short enough never to hold a child up. */
+/** Long enough to read, short enough never to hold a child up. */
 const SHOW_MS = 2200;
 
 /**
  * The big "Great job!" that pops up when a child does something.
  *
  * One overlay in the student shell shows it, so every screen cheers the same
- * way. It never blocks a tap — it is drawn over the page, not in its way — and
- * it is spoken aloud too, since many of the children using this cannot yet read
- * the praise meant for them. The voice honours the sound switch.
+ * way. It never blocks a tap — it is drawn over the page, not in its way.
+ *
+ * It is not read aloud: the browser's synthetic voice sounded robotic and
+ * unsettling to children, mid-quiz especially. The emoji, the sound effects and
+ * the confetti carry the praise for a child who cannot read it yet.
  */
 @Injectable({ providedIn: 'root' })
 export class CheerService {
   private audio = inject(AudioService);
+  private confetti = inject(ConfettiService);
 
   readonly current = signal<Cheer | null>(null);
 
   private sequence = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  /** Cheer with one of the tier's messages, or the one given. */
-  cheer(tier: CheerTier, message?: string): void {
+  /**
+   * Cheer with one of the tier's messages, or the one given — with a sound
+   * effect and confetti when the moment calls for them.
+   */
+  cheer(tier: CheerTier, message?: string, effects: CheerEffects = {}): void {
     const text = message ?? this.pick(MESSAGES[tier]);
 
     this.current.set({ id: ++this.sequence, tier, message: text, emoji: this.pick(EMOJI[tier]) });
-    this.say(text);
+
+    if (effects.sound) {
+      this.audio.play(effects.sound, 0.7);
+    }
+    for (const kind of effects.confetti ?? []) {
+      this.confetti.fire(kind);
+    }
+    if (effects.confetti?.includes('sides')) {
+      // The poppers go off with a bang of their own.
+      this.audio.play('party-popper', 0.5);
+    }
 
     if (this.timer) {
       clearTimeout(this.timer);
@@ -73,11 +96,12 @@ export class CheerService {
     const value = score ?? 0;
 
     if (value >= 85) {
-      this.cheer('great');
+      // "Fantastic!" — with confetti cannons at both sides of the screen.
+      this.cheer('great', undefined, { confetti: ['sides'] });
     } else if (value >= passMark) {
-      this.cheer('keep-going');
+      this.cheer('keep-going', undefined, { confetti: ['drop'] });
     } else {
-      this.cheer('try-again');
+      this.cheer('try-again', undefined, { sound: 'reading-wrong' });
     }
   }
 
@@ -87,23 +111,6 @@ export class CheerService {
       this.timer = null;
     }
     this.current.set(null);
-  }
-
-  private say(text: string): void {
-    if (this.audio.muted() || typeof speechSynthesis === 'undefined') {
-      return;
-    }
-
-    try {
-      const utterance = new SpeechSynthesisUtterance(text.replace('—', ','));
-      utterance.lang = 'en-US';
-      utterance.rate = 0.95;
-      utterance.pitch = 1.25;
-      // Queued, not cancelling: a word the child asked to hear finishes first.
-      speechSynthesis.speak(utterance);
-    } catch {
-      /* no speech synthesis on this device */
-    }
   }
 
   private pick<T>(options: T[]): T {

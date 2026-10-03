@@ -118,10 +118,10 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: 6px 16px 6px 6px;
+    padding: 5px 18px 5px 5px;
     border-radius: var(--radius-full);
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: var(--shadow-md);
+    background: #fff;
+    box-shadow: 0 4px 0 rgba(31, 45, 90, 0.15), 0 8px 14px rgba(0, 0, 0, 0.12);
     backdrop-filter: blur(6px);
   }
 
@@ -142,22 +142,24 @@
     img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
   }
 
-  // Little level chip on the avatar corner.
-  &__lv {
-    position: absolute;
-    bottom: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 22px;
-    padding: 1px 5px;
+  // The player and their level, side by side.
+  &__id {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  // "Level 2" in a chunky yellow pill.
+  &__lvl-pill {
+    padding: 8px 16px;
     border-radius: var(--radius-full);
-    background: linear-gradient(160deg, #ffe071, #ffb01f);
-    color: #6a4a00;
-    font-size: 0.62rem;
-    font-weight: 900;
-    text-align: center;
-    border: 2px solid #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(180deg, #ffe46b 0%, #ffc21f 100%);
+    box-shadow: 0 4px 0 #e0a100, 0 8px 14px rgba(0, 0, 0, 0.15);
+    color: #4a3200;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    white-space: nowrap;
   }
 
   &__who { padding-left: 4px; }
@@ -177,47 +179,181 @@
     color: var(--color-primary-dark);
   }
 
-  &__currencies {
+  &__tools {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  // Sticker buttons on a light pod, like the dock's — one row, top right.
+  &__tool {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-width: 62px;
+    padding: 6px 8px 5px;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(6px);
+    color: var(--color-text-muted);
+    font: inherit;
+    font-weight: 800;
+    font-size: 0.68rem;
+    cursor: pointer;
+    transition: transform 0.12s ease, color 0.12s ease;
+
+    &:hover .hud__tool-icon { transform: translateY(-2px) rotate(-4deg); }
+    &:active .hud__tool-icon { transform: translateY(1px) scale(0.95); }
+
+    &--on { background: #fff8dc; color: var(--color-text); }
+    &--logout:hover { color: var(--color-danger); }
+  }
+
+  &__tool-icon {
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  // Unread count on the bell.
+  &__count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: var(--radius-full);
+    background: #ef3b5d;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 900;
+    line-height: 20px;
+    text-align: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    animation: bell-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+
+@keyframes bell-pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+// ---- Notifications panel --------------------------------------------------
+.bell {
+  position: relative;
+
+  &__scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+  }
+
+  &__panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 2;
+    width: min(360px, calc(100vw - 32px));
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background: #fff;
+    color: var(--color-text);
+    box-shadow: 0 16px 40px rgba(31, 45, 90, 0.3);
+    animation: bell-drop 0.18s ease-out;
+  }
+
+  &__head {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+  }
+
+  &__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+  }
+
+  &__close {
+    display: inline-flex;
+    padding: 4px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  &__empty {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  &__list {
+    display: grid;
     gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  &__pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 7px 12px;
-    border-radius: var(--radius-full);
-    font-weight: 900;
-    color: #fff;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.22), 0 6px 12px rgba(0, 0, 0, 0.18);
+  &__item {
+    position: relative;
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: #f6f8fd;
 
-    &--badges { background: linear-gradient(160deg, #ff6fae, #e5388a); }
-    &--coins {
-      background: linear-gradient(160deg, #ffe071, #ffb01f);
-      color: #6a4a00;
-      box-shadow: 0 4px 0 #d98e12, 0 6px 12px rgba(0, 0, 0, 0.18);
-    }
+    &--new { background: #fff6d8; }
   }
 
-  &__pill-icon { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
-  &__pill-val { font-size: 1.02rem; }
+  &__body { min-width: 0; }
 
-  &__plus {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    margin-left: 2px;
-    border-radius: 50%;
-    background: #2fbf6a;
-    color: #fff;
+  &__item-title {
+    margin: 0;
+    font-weight: 800;
     font-size: 0.9rem;
-    line-height: 1;
-    box-shadow: 0 2px 0 #1f9a52;
   }
+
+  &__message {
+    margin: 2px 0 0;
+    font-weight: 600;
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+  }
+
+  &__when {
+    margin: 4px 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+
+  &__dot {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #ef3b5d;
+  }
+}
+
+@keyframes bell-drop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
 }
 
 // ---- Bottom dock nav -----------------------------------------------------
@@ -257,9 +393,10 @@
     &:active .dock__icon { transform: translateY(2px) scale(0.95); }
 
     // The tab you are on: its sticker pops up bigger and the label lights up.
+    // The tab you are on: a soft green square, as in a game's menu bar.
     &--active {
-      background: #eef4ff;
-      color: var(--color-primary-dark);
+      background: #e3f7d6;
+      color: #2f8a1f;
 
       .dock__icon {
         transform: translateY(-6px) scale(1.14);
@@ -272,6 +409,30 @@
   &__icon {
     transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+
+  &__btn--stat { cursor: default; }
+  a.dock__btn--stat { cursor: pointer; }
+
+  &__sticker { position: relative; display: inline-flex; }
+
+  // The number collected, on the sticker's corner.
+  &__count {
+    position: absolute;
+    top: -8px;
+    right: -16px;
+    min-width: 22px;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 18px;
+    text-align: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+    &--medal { background: linear-gradient(160deg, #ff6fae, #e5388a); color: #fff; }
+    &--star { background: linear-gradient(160deg, #ffe071, #ffb01f); color: #6a4a00; }
+  }
 }
 
 @media (max-width: $breakpoint-sm) {
@@ -282,13 +443,20 @@
     justify-content: space-around;
     border-radius: var(--radius-lg);
   }
-  // Five tabs share a phone's width evenly rather than overflowing it.
+  // The tabs share a phone's width evenly rather than overflowing it.
   .dock__btn {
     flex: 1;
     min-width: 0;
     padding: 8px 2px 6px;
   }
   .hud__name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  // Icons only up top, so the player pod and four buttons fit one row.
+  .hud { padding-left: var(--space-3); padding-right: var(--space-3); }
+  .hud__who { display: none; }
+  .hud__tools { gap: 4px; }
+  .hud__tool { min-width: 0; padding: 5px; }
+  .hud__tool-label { display: none; }
+  .hud__lvl-pill { padding: 6px 10px; font-size: 0.8rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

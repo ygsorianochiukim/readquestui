@@ -36,3 +36,7 @@ export type { StickerColor } from './sticker-icon/sticker-icon';
 export { CheerOverlay } from './cheer/cheer';
 export { ThemePicker } from './theme-picker/theme-picker';
 export { ThemeScenery } from './theme-scenery/theme-scenery';
+export { ConfettiOverlay } from './confetti/confetti';
+export { TablePager, pageOf, storedPageSize, storePageSize, PAGE_SIZES } from './table-pager/table-pager';
+export { Presence, presenceOf } from './presence/presence';
+export type { PresenceState } from './presence/presence';

@@ -47,8 +47,8 @@
 
   // ---- Rounded corners ----
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
   --radius-full: 999px;
 
   // ---- Soft shadows ----
@@ -66,8 +66,8 @@
   --space-8: 3rem;
 
   // ---- Typography (template fonts) ----
-  --font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-display: "Irish Grover", "Montserrat", system-ui, cursive;
+  --font-family: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
   // The scale starts at a full 1rem rather than 0.95: most of this app is read
   // by children on tablets held at arm's length, and shrinking the base size
   // to fit more in was costing legibility everywhere it was used.

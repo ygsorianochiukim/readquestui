@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 import { Icon } from '../icon/icon';
 import { IconName } from '../icon/icons';
+import { StickerIcon } from '../sticker-icon/sticker-icon';
 
 export interface ShellNavItem {
   label: string;
@@ -13,7 +14,7 @@ export interface ShellNavItem {
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive, Icon],
+  imports: [RouterLink, RouterLinkActive, Icon, StickerIcon],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })

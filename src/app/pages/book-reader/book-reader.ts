@@ -26,6 +26,7 @@ import { CheerService } from '../../services/cheer/cheer';
 import { CelebrationService } from '../../services/celebration/celebration';
 import { PronunciationService } from '../../services/pronunciation/pronunciation';
 import { ProgressService } from '../../services/progress/progress';
+import { ReadingPlaceService } from '../../services/reading-place/reading-place';
 import {
   Book,
   BookPageProgress,
@@ -91,10 +92,13 @@ export class BookReader implements OnInit, OnDestroy {
   private progressService = inject(ProgressService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private places = inject(ReadingPlaceService);
 
   readonly bookId = Number(this.route.snapshot.paramMap.get('bookId'));
   /** A picture-book chapter picked in the kingdom; null reads the whole book. */
   private readonly chapterId = Number(this.route.snapshot.queryParamMap.get('chapter')) || null;
+  /** The page to open on ("Let's read!" picking up where the child stopped). */
+  private readonly startPageId = Number(this.route.snapshot.queryParamMap.get('page')) || null;
   readonly book = signal<Book | null>(null);
   readonly leaves = signal<ReadingLeaf[]>([]);
   readonly index = signal(0);
@@ -241,6 +245,7 @@ export class BookReader implements OnInit, OnDestroy {
         const chapter = (book.chapters ?? []).find((entry) => entry.id === this.chapterId);
         this.themes.use(book.theme, chapter?.theme);
         this.leaves.set(this.buildLeaves(book));
+        this.openOnStartPage();
         this.loading.set(false);
         this.layOutPage();
 
@@ -254,6 +259,41 @@ export class BookReader implements OnInit, OnDestroy {
       },
     });
   }
+
+  /** Open on the page asked for in the address, if this book has it. */
+  private openOnStartPage(): void {
+    const start = this.startPageId
+      ? this.leaves().findIndex((leaf) => leaf.kind === 'page' && leaf.id === this.startPageId)
+      : -1;
+
+    if (start > 0) {
+      this.index.set(start);
+    }
+  }
+
+  /** Every page turned to is remembered, so "Let's read!" can come back to it. */
+  private readonly placeKeeper = effect(() => {
+    const leaf = this.current();
+    const book = this.book();
+
+    if (!leaf || !book || leaf.kind !== 'page') {
+      return;
+    }
+
+    const chapter = (book.chapters ?? []).find((entry) => entry.id === this.chapterId);
+
+    untracked(() =>
+      this.places.remember({
+        bookId: this.bookId,
+        bookTitle: book.title,
+        kind: 'scanned',
+        chapterId: this.chapterId,
+        chapterTitle: chapter ? chapter.title : null,
+        page: leaf.id,
+        pageLabel: `Page ${this.index() + 1} of ${this.total()}`,
+      }),
+    );
+  });
 
   ngOnDestroy(): void {
     this.stopNarration();
@@ -706,7 +746,10 @@ export class BookReader implements OnInit, OnDestroy {
     this.pageProgress.set(progress);
 
     if (before && !before.is_completed && progress?.is_completed) {
-      this.cheers.cheer('congrats', 'Congrats! You finished the whole book!');
+      this.cheers.cheer('congrats', 'Congrats! You finished the whole book!', {
+        sound: 'yey',
+        confetti: ['sides', 'drop'],
+      });
     }
   }
 

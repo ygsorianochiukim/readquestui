@@ -1,18 +1,38 @@
 @use 'abstracts' as *;
 
+// Chunky, pressable buttons, like the ones in a children's game: a coloured
+// "base" sits under each one, and pressing it sinks the button onto it.
 .button {
+  --button-base: transparent;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--font-size-base);
   font-weight: 600;
   line-height: 1;
-  padding: 0.65rem 1.1rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  padding: 0.7rem 1.2rem;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--button-base);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+
+  &:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 var(--button-base);
+  }
 
   &:focus-visible {
     @include focus-ring;
@@ -28,40 +48,52 @@
   }
 
   &--primary {
-    background: var(--color-primary);
+    --button-base: var(--color-primary-dark);
+    background: linear-gradient(180deg, #6b9bf0 0%, var(--color-primary) 100%);
     color: #ffffff;
 
     &:not(:disabled):hover {
-      background: var(--color-primary-dark);
+      background: var(--color-primary);
     }
   }
 
   &--secondary {
+    --button-base: var(--color-border);
     background: var(--color-surface);
     color: var(--color-text);
     border-color: var(--color-border);
 
     &:not(:disabled):hover {
-      background: var(--color-background);
+      border-color: var(--color-primary);
+      color: var(--color-primary-dark);
     }
   }
 
   &--danger {
-    background: var(--color-danger);
+    --button-base: #d63a55;
+    background: linear-gradient(180deg, #ff7088 0%, var(--color-danger) 100%);
     color: #ffffff;
 
     &:not(:disabled):hover {
-      filter: brightness(0.95);
+      filter: brightness(0.97);
     }
   }
 
+  // Text-like: no base, no lift.
   &--ghost {
     background: transparent;
     color: var(--color-text-muted);
+    box-shadow: none;
 
     &:not(:disabled):hover {
       background: var(--color-background);
       color: var(--color-text);
+      transform: none;
+    }
+
+    &:not(:disabled):active {
+      transform: none;
+      box-shadow: none;
     }
   }
 }

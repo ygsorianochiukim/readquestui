@@ -21,7 +21,15 @@
   (dragleave)="onDragLeave()"
   (drop)="onDrop($event)">
   @if (uploading()) {
-    <app-status-indicator status="loading" label="Sending your file…" />
+    <app-status-indicator
+      status="loading"
+      [label]="uploadPercent() > 0 ? 'Sending your file… ' + uploadPercent() + '%' : 'Getting your file ready…'" />
+    <span class="drop__progress">
+      <app-progress-bar [percent]="uploadPercent()" />
+    </span>
+    <app-button variant="ghost" (clicked)="cancelSending()">
+      <app-icon name="close" size="sm" /> Cancel
+    </app-button>
   } @else {
     <app-icon class="drop__icon" name="upload" size="2xl" />
     <p class="drop__title">Drop a PDF or page photos here</p>
@@ -59,7 +67,7 @@
             <small>{{ batch.source_name }}</small>
           </span>
 
-          <app-status-indicator [status]="batchStatus(batch)" size="sm" />
+          <app-status-indicator [status]="batchStatus(batch)" [label]="batchLabel(batch)" size="sm" />
 
           @if (!batch.is_finished) {
             <span class="uploads__progress">
@@ -69,9 +77,28 @@
             <span class="uploads__error">{{ batch.error }}</span>
           }
 
+          @if (batch.status === 'failed') {
+            <app-button
+              variant="secondary"
+              [disabled]="retryingId() === batch.id"
+              (clicked)="retry(batch.id)">
+              <app-icon name="retry" size="sm" />
+              {{ retryingId() === batch.id ? 'Starting…' : 'Try again' }}
+            </app-button>
+          }
+
           @if (batch.status !== 'committed') {
             <app-button variant="ghost" (clicked)="watch(batch.id)">
               {{ batch.status === 'ready' ? 'Check it' : 'Watch' }}
+            </app-button>
+          }
+
+          @if (!batch.is_finished) {
+            <app-button
+              variant="danger"
+              [disabled]="cancellingId() === batch.id"
+              (clicked)="cancel(batch.id)">
+              {{ cancellingId() === batch.id ? 'Cancelling…' : 'Cancel' }}
             </app-button>
           }
         </li>
@@ -104,11 +131,24 @@
             You can leave this page — we will keep reading, and it will be here
             when you come back.
           </p>
+          <app-button
+            variant="danger"
+            [disabled]="cancellingId() === data.batch.id"
+            (clicked)="cancel(data.batch.id)">
+            <app-icon name="close" size="sm" />
+            {{ cancellingId() === data.batch.id ? 'Cancelling…' : 'Cancel upload' }}
+          </app-button>
         </div>
       }
 
       @if (data.batch.status === 'failed') {
         <app-alert variant="error" [message]="data.batch.error ?? 'Something went wrong.'" />
+        <app-button
+          variant="secondary"
+          [disabled]="retryingId() === data.batch.id"
+          (clicked)="retry(data.batch.id)">
+          <app-icon name="retry" size="sm" /> Try again
+        </app-button>
         <app-button variant="danger" (clicked)="discard()">Discard this upload</app-button>
       }
 

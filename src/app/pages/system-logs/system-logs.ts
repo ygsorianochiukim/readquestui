@@ -1,18 +1,28 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SystemLogService } from '../../services/system-log/system-log';
 import { StudentService } from '../../services/student/student';
 import { Student, SystemLog } from '../../models';
-import { Card, EmptyState, PageHeader, Spinner, Icon } from '../../shared/components';
+import {
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  PageHeader,
+  Spinner,
+  TablePager,
+  storedPageSize,
+  storePageSize,
+} from '../../shared/components';
 
 @Component({
   selector: 'app-system-logs',
-  imports: [DatePipe, FormsModule, Card, EmptyState, PageHeader, Spinner, Icon],
+  imports: [DatePipe, FormsModule, Button, Card, EmptyState, Icon, PageHeader, Spinner, TablePager],
   templateUrl: './system-logs.html',
   styleUrl: './system-logs.scss',
 })
-export class SystemLogs implements OnInit {
+export class SystemLogs implements OnInit, OnDestroy {
   private logService = inject(SystemLogService);
   private studentService = inject(StudentService);
 
@@ -22,12 +32,17 @@ export class SystemLogs implements OnInit {
   readonly loading = signal(true);
 
   readonly page = signal(1);
-  readonly lastPage = signal(1);
   readonly total = signal(0);
+  readonly perPage = signal(storedPageSize('activity-log', 20));
 
-  action = '';
-  studentId = '';
-  search = '';
+  readonly action = signal('');
+  readonly studentId = signal('');
+  readonly search = signal('');
+
+  readonly filtersChanged = computed(() => !!(this.action() || this.studentId() || this.search()));
+
+  /** Searching waits for a pause in typing rather than asking on every key. */
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     this.studentService.list().subscribe({
@@ -38,22 +53,29 @@ export class SystemLogs implements OnInit {
     this.load();
   }
 
+  ngOnDestroy(): void {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+  }
+
   load(page = 1): void {
     this.loading.set(true);
     this.page.set(page);
 
     this.logService
       .list({
-        action: this.action || undefined,
-        studentId: this.studentId ? Number(this.studentId) : null,
-        search: this.search || undefined,
+        action: this.action() || undefined,
+        studentId: this.studentId() ? Number(this.studentId()) : null,
+        search: this.search() || undefined,
         page,
+        perPage: this.perPage(),
       })
       .subscribe({
         next: (response) => {
           this.logs.set(response.data);
           this.actions.set(response.actions);
-          this.lastPage.set(response.meta.last_page);
+          this.page.set(response.meta.current_page);
           this.total.set(response.meta.total);
           this.loading.set(false);
         },
@@ -61,27 +83,25 @@ export class SystemLogs implements OnInit {
       });
   }
 
-  applyFilters(): void {
-    this.load(1);
+  onSearch(value: string): void {
+    this.search.set(value);
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.searchTimer = setTimeout(() => this.load(1), 350);
   }
 
   clearFilters(): void {
-    this.action = '';
-    this.studentId = '';
-    this.search = '';
+    this.action.set('');
+    this.studentId.set('');
+    this.search.set('');
     this.load(1);
   }
 
-  previous(): void {
-    if (this.page() > 1) {
-      this.load(this.page() - 1);
-    }
-  }
-
-  next(): void {
-    if (this.page() < this.lastPage()) {
-      this.load(this.page() + 1);
-    }
+  setPageSize(size: number): void {
+    this.perPage.set(size);
+    storePageSize('activity-log', size);
+    this.load(1);
   }
 
   /** Group actions by prefix so the badge colour hints at what happened. */

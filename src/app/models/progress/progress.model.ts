@@ -136,6 +136,9 @@ export interface DashboardStudent {
   reading_level: string | null;
   status: string;
   points: number;
+  is_online: boolean;
+  is_present_today: boolean;
+  last_seen_at: string | null;
   assigned_books: number;
   completed_books: number;
   percent: number;
@@ -144,6 +147,8 @@ export interface DashboardStudent {
 export interface DashboardData {
   stats: {
     students: number;
+    present_today: number;
+    online_now: number;
     active_books: number;
     pending_validations: number;
     average_completion: number;

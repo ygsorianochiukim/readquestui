@@ -162,9 +162,11 @@ export class ScoreModal {
 
       if (this.rewards().length > 0 || this.celebrations()?.milestone === 'book_completed') {
         this.audio.play('celebrate');
-      } else {
-        this.audio.playResult(this.passed());
+      } else if (this.passed()) {
+        this.audio.play('correct');
       }
+      // A reading below the pass mark gets its own "not quite" sound with the
+      // cheer (CheerService.forScore), so none is played here as well.
     });
   }
 

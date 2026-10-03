@@ -2,9 +2,13 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-4);
   margin-bottom: var(--space-5);
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
 
   @media (max-width: 720px) {
     grid-template-columns: repeat(2, 1fr);
@@ -30,6 +34,21 @@
   &--alert &__value {
     color: var(--color-warning);
   }
+
+  &__value small {
+    font-size: 0.55em;
+    color: var(--color-text-muted);
+  }
+
+  &__note {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #17803f;
+  }
+
+  &--present &__value {
+    color: #17803f;
+  }
 }
 
 .section-head {
@@ -51,38 +70,7 @@
   }
 }
 
-.table-wrap {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-base);
-
-  th,
-  td {
-    text-align: left;
-    padding: var(--space-3);
-    border-bottom: 1px solid var(--color-border);
-    white-space: nowrap;
-  }
-
-  th {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    font-weight: 700;
-  }
-
-  &__strong {
-    font-weight: 700;
-  }
-
-  &__right {
-    text-align: right;
-  }
-
-  &__progress {
-    min-width: 160px;
-  }
+// The class table uses the shared table styles (styles/_tables.scss).
+.progress-cell {
+  min-width: 160px;
 }

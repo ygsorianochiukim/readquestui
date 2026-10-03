@@ -11,6 +11,8 @@ export interface LiveWord {
   normalized: string;
   state: WordState;
   accuracy: number | null;
+  /** Starts a new line of the page. */
+  newLine?: boolean;
 }
 
 /** A word Azure reported in one recognised segment. */
@@ -42,15 +44,26 @@ export function normalizeWord(word: string): string {
  * artefact) is kept visible but can never be scored.
  */
 export function tokenize(text: string): LiveWord[] {
-  const pieces = text.split(/\s+/).filter((piece) => piece.length > 0);
+  const words: LiveWord[] = [];
 
-  return pieces.map((piece, index) => ({
-    index,
-    text: piece,
-    normalized: normalizeWord(piece),
-    state: 'pending' as WordState,
-    accuracy: null,
-  }));
+  text.split(/\r?\n/).forEach((line, lineIndex) => {
+    line
+      .split(/\s+/)
+      .filter((piece) => piece.length > 0)
+      .forEach((piece, position) => {
+        words.push({
+          index: words.length,
+          text: piece,
+          normalized: normalizeWord(piece),
+          state: 'pending' as WordState,
+          accuracy: null,
+          // The page's own line breaks, so a page reads as the teacher laid it out.
+          newLine: lineIndex > 0 && position === 0 && words.length > 0,
+        });
+      });
+  });
+
+  return words;
 }
 
 export interface AlignmentResult {

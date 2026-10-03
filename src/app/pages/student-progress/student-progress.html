@@ -76,34 +76,51 @@
       <app-card>
         <div class="book">
           <h3 class="book__title">{{ book.title }}</h3>
-          <span class="book__count">{{ book.completed_chapters }} / {{ book.total_chapters }}</span>
+          <span class="book__count">{{ book.completed_chapters }} / {{ book.total_chapters }} chapters</span>
         </div>
         <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
-                <th>Chapter</th>
-                <th>Story</th>
-                <th>Read-aloud</th>
-                <th>Game</th>
-                <th>Quiz</th>
-                <th>Status</th>
+                <th scope="col">Chapter</th>
+                <th scope="col" class="table__num">Story</th>
+                <th scope="col" class="table__num">Read-aloud</th>
+                <th scope="col" class="table__num">Game</th>
+                <th scope="col" class="table__num">Quiz</th>
+                <th scope="col">Status</th>
               </tr>
             </thead>
             <tbody>
               @for (chapter of book.chapters; track chapter.id) {
                 <tr>
                   <td class="table__strong">{{ chapter.chapter_number }}. {{ chapter.title }}</td>
-                  <td>@if (chapter.progress?.story_read) {<app-icon name="check" size="sm" />} @else {—}</td>
-                  <td>@if (chapter.progress?.pronunciation_passed) {<app-icon name="check" size="sm" />} @else {—}</td>
-                  <td>@if (chapter.progress?.game_completed) {<app-icon name="check" size="sm" />} @else {—}</td>
-                  <td>
-                    @if (chapter.progress?.quiz_passed) {<app-icon name="check" size="sm" />} @else {—}
+                  <td class="table__num">
+                    @if (chapter.progress?.story_read) {<span class="table__yes"><app-icon name="check-circle" size="sm" label="Done" /></span>} @else {<span class="table__no">—</span>}
+                  </td>
+                  <td class="table__num">
+                    @if (chapter.progress?.pronunciation_passed) {<span class="table__yes"><app-icon name="check-circle" size="sm" label="Done" /></span>} @else {<span class="table__no">—</span>}
+                  </td>
+                  <td class="table__num">
+                    @if (chapter.progress?.game_completed) {<span class="table__yes"><app-icon name="check-circle" size="sm" label="Done" /></span>} @else {<span class="table__no">—</span>}
+                  </td>
+                  <td class="table__num">
                     @if (chapter.progress?.quiz_score !== null && chapter.progress?.quiz_score !== undefined) {
-                      ({{ chapter.progress?.quiz_score }}%)
+                      <span class="score-pill" [class.score-pill--passed]="chapter.progress?.quiz_passed" [class.score-pill--failed]="!chapter.progress?.quiz_passed">
+                        {{ chapter.progress?.quiz_score }}
+                      </span>
+                    } @else if (chapter.progress?.quiz_passed) {
+                      <span class="table__yes"><app-icon name="check-circle" size="sm" label="Done" /></span>
+                    } @else {
+                      <span class="table__no">—</span>
                     }
                   </td>
-                  <td>{{ chapterState(chapter) }}</td>
+                  <td>
+                    @if (chapterStatus(chapter); as status) {
+                      <app-status-indicator [status]="status" size="sm" />
+                    } @else {
+                      <span class="table__muted">Not started</span>
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -118,30 +135,65 @@
       @if (data.pronunciation.length === 0) {
         <p class="report__empty">No read-aloud attempts yet.</p>
       } @else {
+        <div class="table-filters no-print">
+          <label class="table-filters__field">
+            <span class="table-filters__label">Show</span>
+            <select class="table-filters__control" [ngModel]="resultFilter()" (ngModelChange)="setResultFilter($event)">
+              <option value="">All readings</option>
+              <option value="passed">Passed</option>
+              <option value="failed">Did not pass</option>
+              <option value="validated">Checked by you</option>
+              <option value="unvalidated">Not checked yet</option>
+            </select>
+          </label>
+        </div>
+
         <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
-                <th>Overall</th>
-                <th>Accuracy</th>
-                <th>Fluency</th>
-                <th>Completeness</th>
-                <th>Validated</th>
+                <th scope="col">Recorded</th>
+                <th scope="col" class="table__num">Score</th>
+                <th scope="col" class="table__num">Accuracy</th>
+                <th scope="col" class="table__num">Fluency</th>
+                <th scope="col" class="table__num">Completeness</th>
+                <th scope="col" class="table__num">Checked</th>
               </tr>
             </thead>
             <tbody>
-              @for (attempt of data.pronunciation; track attempt.id) {
+              @for (attempt of pagedAttempts(); track attempt.id) {
                 <tr>
-                  <td class="table__strong">{{ (attempt.pron_score ?? 0).toFixed(0) }}</td>
-                  <td>{{ (attempt.accuracy_score ?? 0).toFixed(0) }}</td>
-                  <td>{{ (attempt.fluency_score ?? 0).toFixed(0) }}</td>
-                  <td>{{ (attempt.completeness_score ?? 0).toFixed(0) }}</td>
-                  <td>@if (attempt.is_validated) {<app-icon name="check" size="sm" />} @else {—}</td>
+                  <td class="table__muted table__nowrap">{{ attempt.created_at | date: 'MMM d, y · h:mm a' }}</td>
+                  <td class="table__num">
+                    <span class="score-pill" [class.score-pill--passed]="attempt.passed" [class.score-pill--failed]="!attempt.passed">
+                      {{ (attempt.effective_score ?? attempt.pron_score ?? 0) | number: '1.0-0' }}
+                    </span>
+                  </td>
+                  <td class="table__num">{{ (attempt.accuracy_score ?? 0) | number: '1.0-0' }}</td>
+                  <td class="table__num">{{ (attempt.fluency_score ?? 0) | number: '1.0-0' }}</td>
+                  <td class="table__num">{{ (attempt.completeness_score ?? 0) | number: '1.0-0' }}</td>
+                  <td class="table__num">
+                    @if (attempt.is_validated) {<span class="table__yes"><app-icon name="check-circle" size="sm" label="Checked" /></span>} @else {<span class="table__no">—</span>}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="table__message">
+                    <app-empty-state icon="search" title="No readings match" message="Pick another option above." />
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
+
+        <app-table-pager
+          class="no-print"
+          [page]="currentPage()"
+          [perPage]="perPage()"
+          [total]="filteredAttempts().length"
+          (pageChange)="page.set($event)"
+          (perPageChange)="setPageSize($event)" />
       }
     </app-card>
   </div>

@@ -53,6 +53,13 @@
       <p class="game__hint">Hint: it starts with “{{ current().charAt(0) }}”</p>
     }
 
+    <!-- The word's blanks, filling in as the child types. -->
+    <div class="game__slots" aria-hidden="true">
+      @for (letter of current().split(''); track $index) {
+        <span class="game__slot" [class.game__slot--filled]="!!guess().charAt($index)">{{ guess().charAt($index) }}</span>
+      }
+    </div>
+
     <input
       class="game__input"
       type="text"

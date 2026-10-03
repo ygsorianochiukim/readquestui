@@ -21,7 +21,7 @@
 
 @if (loading()) {
   <app-spinner label="Loading pages…" />
-} @else if (pages().length === 0) {
+} @else if (pages().length === 0 && chapters().length === 0) {
   <app-empty-state
     icon="story"
     title="No pages yet"
@@ -42,17 +42,67 @@
           }
         </h2>
         @if (group.chapter) {
-          <app-button
-            variant="secondary"
-            [disabled]="uploading()"
-            (clicked)="chooseFiles(group.chapter.id, fileInput)">
-            <app-icon name="upload" size="sm" /> Add pages
-          </app-button>
+          <div class="chapter-group__actions">
+            <app-button
+              variant="ghost"
+              [disabled]="uploading() || typingChapterId() === group.chapter.id"
+              (clicked)="startTyping(group.chapter.id)">
+              <app-icon name="edit" size="sm" /> Type a page
+            </app-button>
+            <app-button
+              variant="secondary"
+              [disabled]="uploading()"
+              (clicked)="chooseFiles(group.chapter.id, fileInput)">
+              <app-icon name="upload" size="sm" /> Add pages
+            </app-button>
+          </div>
         }
       </header>
 
+      @if (group.chapter && typingChapterId() === group.chapter.id) {
+        <div class="page-draft">
+          <label class="page-draft__label" [for]="'draft-' + group.chapter.id">
+            New page for Chapter {{ group.chapter.chapter_number }} — one sentence per line
+          </label>
+          <textarea
+            class="page-card__text"
+            rows="6"
+            [id]="'draft-' + group.chapter.id"
+            [ngModel]="draftText()"
+            (ngModelChange)="draftText.set($event)"
+            placeholder="Nash brings a bird nest.&#10;He puts it on his desk."></textarea>
+          <div class="page-card__save">
+            <app-button variant="ghost" (clicked)="cancelTyping()">Cancel</app-button>
+            <app-button [disabled]="savingDraft() || !draftText().trim()" (clicked)="saveDraft()">
+              {{ savingDraft() ? 'Saving…' : 'Add page' }}
+            </app-button>
+          </div>
+        </div>
+      }
+
       @if (group.pages.length === 0) {
-        <p class="chapter-group__empty">No pages in this chapter yet.</p>
+        <div class="chapter-group__empty">
+          <p>No pages in this chapter yet. Upload photos, type a page, or make the pages from the chapter's story text.</p>
+          @if (group.chapter) {
+            <div class="chapter-group__generate">
+              <label class="chapter-group__per-page">
+                Sentences per page
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  [ngModel]="sentencesPerPage()"
+                  (ngModelChange)="sentencesPerPage.set(+$event || 5)" />
+              </label>
+              <app-button
+                [disabled]="generatingChapterId() !== null"
+                (clicked)="generatePages(group.chapter)">
+                <app-icon name="sparkles" size="sm" />
+                {{ generatingChapterId() === group.chapter.id ? 'Making pages…' : 'Make pages from story' }}
+              </app-button>
+            </div>
+          }
+        </div>
       }
 
       <div class="pages">

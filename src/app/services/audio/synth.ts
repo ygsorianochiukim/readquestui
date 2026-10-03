@@ -118,7 +118,58 @@ const CUES: Record<Exclude<SoundName, 'page-turn'>, Note[]> = {
   ],
   // A soft blip for small confirmations.
   tap: [{ freq: 880, glideTo: 620, at: 0, duration: 0.07, gain: 0.7 }],
+  // "Yey!": two bright voices swooping up together, then a cheer on top.
+  yey: [
+    { freq: 520, glideTo: 880, at: 0, duration: 0.32, type: 'triangle' },
+    { freq: 660, glideTo: 1100, at: 0.02, duration: 0.32, type: 'triangle', gain: 0.6 },
+    { freq: 880, glideTo: 1320, at: 0.3, duration: 0.45, type: 'triangle', gain: 0.8 },
+    { freq: 1100, glideTo: 1650, at: 0.32, duration: 0.45, gain: 0.4 },
+  ],
+  // "Yip-pee!": a short hop, then a long happy squeal.
+  yippee: [
+    { freq: 784, glideTo: 1047, at: 0, duration: 0.14, type: 'triangle' },
+    { freq: 1047, glideTo: 1568, at: 0.17, duration: 0.5, type: 'triangle' },
+    { freq: 1568, at: 0.6, duration: 0.3, gain: 0.35 },
+    { freq: 2093, at: 0.68, duration: 0.3, gain: 0.25 },
+  ],
+  // Sparkles that follow the pop (the pop itself is noise, below).
+  'party-popper': [
+    { freq: 1568, at: 0.08, duration: 0.15, gain: 0.35 },
+    { freq: 2093, at: 0.14, duration: 0.15, gain: 0.3 },
+    { freq: 2637, at: 0.2, duration: 0.2, gain: 0.25 },
+  ],
+  // "Uh-oh": a gentle step down, kind rather than a buzzer.
+  'reading-wrong': [
+    { freq: 440, glideTo: 415, at: 0, duration: 0.2, type: 'triangle', gain: 0.8 },
+    { freq: 349, glideTo: 311, at: 0.24, duration: 0.34, type: 'triangle', gain: 0.8 },
+  ],
+  // "Wah-wah-wah": three soft, sagging notes — not this time.
+  'not-passed': [
+    { freq: 392, glideTo: 370, at: 0, duration: 0.26, type: 'triangle', gain: 0.75 },
+    { freq: 370, glideTo: 349, at: 0.3, duration: 0.26, type: 'triangle', gain: 0.75 },
+    { freq: 349, glideTo: 294, at: 0.6, duration: 0.6, type: 'triangle', gain: 0.75 },
+  ],
 };
+
+/** A confetti cannon's pop: a short, bright burst of noise. */
+function pop(ctx: AudioContext, out: AudioNode, start: number, volume: number): void {
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const env = ctx.createGain();
+  const length = 0.16;
+
+  source.buffer = noise(ctx);
+  filter.type = 'highpass';
+  filter.frequency.setValueAtTime(1800, start);
+
+  env.gain.setValueAtTime(0.0001, start);
+  env.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * 1.4), start + 0.005);
+  env.gain.exponentialRampToValueAtTime(0.0001, start + length);
+
+  source.connect(filter).connect(env).connect(out);
+  source.start(start);
+  source.stop(start + length + 0.02);
+}
 
 /** Play a synthesised cue into `out`, at the caller's volume (0–1). */
 export function playSynthCue(ctx: AudioContext, out: AudioNode, name: SoundName, volume: number): void {
@@ -128,6 +179,10 @@ export function playSynthCue(ctx: AudioContext, out: AudioNode, name: SoundName,
   if (name === 'page-turn') {
     swish(ctx, out, start, level);
     return;
+  }
+
+  if (name === 'party-popper') {
+    pop(ctx, out, start, level);
   }
 
   for (const note of CUES[name]) {

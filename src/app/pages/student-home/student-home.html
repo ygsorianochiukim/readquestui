@@ -1,6 +1,12 @@
 <div class="hub">
   <div class="hub__hello">
-    <h1 class="hub__title">Hi {{ firstName() }}! <app-sticker-icon class="hub__wave" name="wave" size="lg" /></h1>
+    <h1 class="hub__title">
+      Hi {{ firstName() }}!
+      <!-- The child is here: present, and active right now. -->
+      <span class="presence" role="status">
+        <span class="presence__dot" aria-hidden="true"></span> Active now
+      </span>
+    </h1>
     <p class="hub__subtitle">Ready for today's reading quest?</p>
   </div>
 
@@ -15,10 +21,15 @@
           <p class="world__sub">{{ continueBook()?.reading_level || 'Your adventure awaits' }}</p>
         </div>
 
-        <div class="world__mascot">
+        <button
+          type="button"
+          class="world__mascot"
+          aria-haspopup="dialog"
+          aria-label="Let's read! Start a chapter or carry on where you stopped"
+          (click)="openLetsRead()">
           <span class="world__bubble">Let's read!</span>
           <app-sticker-icon class="world__buddy" name="feather" size="xl" />
-        </div>
+        </button>
 
         <div class="world__level"><span>LEVEL</span> <b>{{ playerLevel() }}</b></div>
 
@@ -51,7 +62,7 @@
       </aside>
     </section>
 
-    <!-- Player stats -->
+    <!-- Player stats: one row of boxes -->
     <div class="tiles">
       <div class="tile tile--coins">
         <app-sticker-icon class="tile__icon" name="star" size="lg" />
@@ -63,72 +74,93 @@
         <span class="tile__value">{{ completedBooks() }}/{{ books().length }}</span>
         <span class="tile__label">Books</span>
       </div>
-      <div class="tile tile--badges">
-        <app-sticker-icon class="tile__icon" name="badges" size="lg" />
-        <span class="tile__value">{{ badges().length }}</span>
-        <span class="tile__label">Badges</span>
-      </div>
       <div class="tile tile--progress">
         <app-sticker-icon class="tile__icon" name="target" size="lg" />
         <span class="tile__value">{{ overallPercent() }}%</span>
         <span class="tile__label">Progress</span>
       </div>
-      <button type="button" class="tile tile--trophies" (click)="goAchievements()">
-        <app-sticker-icon class="tile__icon" name="trophy" size="lg" />
-        <span class="tile__value">{{ achievementsUnlocked() }}/{{ achievementsTotal() }}</span>
-        <span class="tile__label">Trophies</span>
+      <!-- Badges and trophies are one collection, in one box. -->
+      <button type="button" class="tile tile--rewards" (click)="goAchievements()">
+        <span class="tile__pair">
+          <span class="tile__half">
+            <app-sticker-icon name="badges" size="md" />
+            <span class="tile__value">{{ badges().length }}</span>
+          </span>
+          <span class="tile__half">
+            <app-sticker-icon name="trophy" size="md" />
+            <span class="tile__value">{{ achievementsUnlocked() }}/{{ achievementsTotal() }}</span>
+          </span>
+        </span>
+        <span class="tile__label">Badges &amp; Trophies</span>
+      </button>
+      <button type="button" class="tile tile--quests" (click)="goLibrary()">
+        <app-sticker-icon class="tile__icon" name="map" size="lg" />
+        <span class="tile__value">{{ openQuests() }}</span>
+        <span class="tile__label">Your Quests</span>
       </button>
     </div>
 
-    <!-- Next milestone nudge -->
-    @if (nextAchievement(); as next) {
-      <app-next-trophy [achievement]="next" (opened)="goAchievements()" />
+    <!-- Where the child left off, one tap from carrying on. -->
+    @if (letsReadBook(); as book) {
+      <button type="button" class="resume" (click)="continueReading()">
+        <span class="resume__cover">
+          @if (book.cover_image_url) {
+            <img [src]="book.cover_image_url" [alt]="book.title" />
+          } @else {
+            <app-sticker-icon name="book" size="xl" />
+          }
+        </span>
+        <span class="resume__body">
+          <span class="resume__label">{{ lastPlace() ? 'Continue where you left off' : (book.percent > 0 ? 'Keep reading' : 'Start your next book') }}</span>
+          <span class="resume__title">{{ book.title }}</span>
+          @if (lastPlace(); as place) {
+            <span class="resume__where">
+              {{ place.chapterTitle ? place.chapterTitle + ' · ' : '' }}{{ place.pageLabel }}
+            </span>
+          }
+          <span class="resume__bar"><span [style.width.%]="book.percent"></span></span>
+        </span>
+        <span class="resume__go">
+          <app-icon name="play" size="lg" />
+          <span>{{ lastPlace() || book.percent > 0 ? 'Continue' : 'Start' }}</span>
+        </span>
+      </button>
     }
-
-    <!-- Quests / books -->
-    <section class="panel">
-      <div class="panel__head">
-        <h2 class="panel__title"><app-sticker-icon name="map" size="sm" /> Your Quests</h2>
-        <app-button variant="ghost" (clicked)="goLibrary()">Open map <app-icon name="forward" size="sm" /></app-button>
-      </div>
-      @if (books().length === 0) {
-        <p class="panel__empty">Your teacher hasn't assigned any books yet. Check back soon!</p>
-      } @else {
-        <div class="quests">
-          @for (book of books(); track book.id) {
-            <button
-              type="button"
-              class="mini"
-              [class.mini--locked]="book.is_locked"
-              [class.mini--done]="book.is_completed"
-              (click)="openBook(book)">
-              <app-sticker-icon
-                class="mini__icon"
-                [name]="book.is_locked ? 'locked' : (book.is_completed ? 'check-circle' : 'book')"
-                size="lg" />
-              <span class="mini__title">{{ book.title }}</span>
-              <span class="mini__pct">{{ book.is_locked ? 'Locked' : book.percent + '%' }}</span>
-            </button>
-          }
-        </div>
-      }
-    </section>
-
-    <!-- Treasure / badges -->
-    <section class="panel">
-      <h2 class="panel__title"><app-sticker-icon name="badges" size="sm" /> My Treasure</h2>
-      @if (badges().length === 0) {
-        <p class="panel__empty">No badges yet — keep reading to earn your first one!</p>
-      } @else {
-        <div class="treasure">
-          @for (badge of badges(); track badge.id) {
-            <div class="treasure__item" [title]="badge.description || badge.name">
-              <app-sticker-icon class="treasure__icon" [name]="badge.icon || 'badges'" size="lg" />
-              <span class="treasure__name">{{ badge.name }}</span>
-            </div>
-          }
-        </div>
-      }
-    </section>
   }
 </div>
+
+<!-- "Let's read!": carry on from the page they stopped on, or start a chapter. -->
+<app-modal title="Let's read!" [open]="letsReadOpen()" (closed)="letsReadOpen.set(false)">
+  @if (letsReadBook(); as book) {
+    <p class="letsread__book">
+      <app-sticker-icon name="book" size="sm" /> {{ book.title }}
+    </p>
+    <div class="letsread">
+      <button type="button" class="letsread__choice letsread__choice--continue" (click)="continueReading()">
+        <app-sticker-icon class="letsread__icon" name="play" size="lg" />
+        <span class="letsread__text">
+          <b>Continue reading</b>
+          @if (lastPlace(); as place) {
+            <small>{{ place.chapterTitle ? place.chapterTitle + ' · ' : '' }}{{ place.pageLabel }}</small>
+          } @else {
+            <small>Pick up where you left off</small>
+          }
+        </span>
+      </button>
+      <button type="button" class="letsread__choice" (click)="startChapter()">
+        <app-sticker-icon class="letsread__icon" name="book" size="lg" />
+        <span class="letsread__text">
+          <b>Start the chapter</b>
+          <small>From the first page</small>
+        </span>
+      </button>
+      <button type="button" class="letsread__choice" (click)="pickChapter()">
+        <app-sticker-icon class="letsread__icon" name="map" size="lg" />
+        <span class="letsread__text">
+          <b>Pick a chapter</b>
+          <small>Open the book's map</small>
+        </span>
+      </button>
+    </div>
+  }
+</app-modal>

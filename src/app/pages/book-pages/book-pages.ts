@@ -141,6 +141,65 @@ export class BookPages implements OnInit {
     });
   }
 
+  // ---- Pages without a scan: typed in, or cut from the chapter's story ----
+
+  /** The chapter a page is being typed into; null when none is. */
+  readonly typingChapterId = signal<number | null>(null);
+  readonly draftText = signal('');
+  readonly savingDraft = signal(false);
+  readonly generatingChapterId = signal<number | null>(null);
+  /** How many sentences go on each generated page. */
+  readonly sentencesPerPage = signal(5);
+
+  startTyping(chapterId: number): void {
+    this.typingChapterId.set(chapterId);
+    this.draftText.set('');
+  }
+
+  cancelTyping(): void {
+    this.typingChapterId.set(null);
+    this.draftText.set('');
+  }
+
+  saveDraft(): void {
+    const chapterId = this.typingChapterId();
+    const text = this.draftText().trim();
+
+    if (!chapterId || !text) {
+      return;
+    }
+
+    this.savingDraft.set(true);
+    this.errorMessage.set(null);
+    this.pageService.addText(this.bookId, chapterId, text).subscribe({
+      next: (response) => {
+        this.savingDraft.set(false);
+        this.cancelTyping();
+        this.pages.update((pages) => [...pages, response.data]);
+      },
+      error: (response: HttpErrorResponse) => {
+        this.savingDraft.set(false);
+        this.errorMessage.set(this.readError(response));
+      },
+    });
+  }
+
+  /** Make the chapter's pages from its story text. */
+  generatePages(chapter: BookPageChapter): void {
+    this.generatingChapterId.set(chapter.id);
+    this.errorMessage.set(null);
+    this.pageService.generate(chapter.id, this.sentencesPerPage()).subscribe({
+      next: (response) => {
+        this.generatingChapterId.set(null);
+        this.pages.update((pages) => [...pages, ...response.data]);
+      },
+      error: (response: HttpErrorResponse) => {
+        this.generatingChapterId.set(null);
+        this.errorMessage.set(this.readError(response));
+      },
+    });
+  }
+
   saveText(page: BookPage): void {
     this.savingPageId.set(page.id);
     this.errorMessage.set(null);

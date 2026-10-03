@@ -3,6 +3,7 @@ import { BookPage } from '../book-page/book-page.model';
 
 export type IngestStatus =
   | 'queued'
+  | 'starting'
   | 'rasterizing'
   | 'analyzing'
   | 'reading'

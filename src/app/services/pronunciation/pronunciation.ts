@@ -21,9 +21,12 @@ export interface ReviewQueueFilters {
   studentId?: number;
   status?: 'pending' | 'reviewed';
   onlyFailed?: boolean;
+  /** Only readings that did not match the text. */
+  offScript?: boolean;
   from?: string;
   to?: string;
   page?: number;
+  perPage?: number;
 }
 
 export interface ReviewQueue {
@@ -114,6 +117,12 @@ export class PronunciationService {
     }
     if (filters.page) {
       params = params.set('page', filters.page);
+    }
+    if (filters.perPage) {
+      params = params.set('per_page', filters.perPage);
+    }
+    if (filters.offScript) {
+      params = params.set('off_script', '1');
     }
 
     return this.http.get<ReviewQueue>(`${this.base}/pronunciation/queue`, { params });

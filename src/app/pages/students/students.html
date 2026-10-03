@@ -15,40 +15,122 @@
       <app-button (clicked)="openCreateForm()">+ Add Student</app-button>
     </app-empty-state>
   } @else {
+    <div class="table-filters">
+      <label class="table-filters__field table-filters__field--grow">
+        <span class="table-filters__label">Search</span>
+        <span class="table-filters__search">
+          <app-icon name="search" size="sm" />
+          <input
+            class="table-filters__control"
+            type="search"
+            placeholder="Name or username…"
+            [ngModel]="search()"
+            (ngModelChange)="setFilter('search', $event)" />
+        </span>
+      </label>
+
+      <label class="table-filters__field">
+        <span class="table-filters__label">Reading level</span>
+        <select class="table-filters__control" [ngModel]="levelFilter()" (ngModelChange)="setFilter('level', $event)">
+          <option value="">All levels</option>
+          @for (level of levels(); track level) {
+            <option [value]="level">{{ level }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="table-filters__field">
+        <span class="table-filters__label">Status</span>
+        <select class="table-filters__control" [ngModel]="statusFilter()" (ngModelChange)="setFilter('status', $event)">
+          <option value="">All</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </label>
+
+      <label class="table-filters__field">
+        <span class="table-filters__label">Today</span>
+        <select class="table-filters__control" [ngModel]="presenceFilter()" (ngModelChange)="setFilter('presence', $event)">
+          <option value="">Everyone</option>
+          <option value="online">Active now</option>
+          <option value="present">Present today</option>
+          <option value="away">Away</option>
+        </select>
+      </label>
+
+      @if (filtersChanged()) {
+        <div class="table-filters__end">
+          <app-button variant="ghost" (clicked)="clearFilters()">
+            <app-icon name="clear" size="sm" /> Clear filters
+          </app-button>
+        </div>
+      }
+    </div>
+
     <div class="table-wrap">
       <table class="table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Username</th>
-            <th>Reading level</th>
-            <th>Points</th>
-            <th>Status</th>
-            <th class="table__right">Actions</th>
+            <th scope="col">Name</th>
+            <th scope="col">Today</th>
+            <th scope="col">Username</th>
+            <th scope="col">Reading level</th>
+            <th scope="col" class="table__num">Points</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="table__right">Actions</th>
           </tr>
         </thead>
         <tbody>
-          @for (student of students(); track student.id) {
+          @for (student of pagedStudents(); track student.id) {
             <tr>
-              <td class="table__strong">{{ student.first_name }} {{ student.last_name }}</td>
-              <td>{{ student.username }}</td>
+              <td>
+                <span class="table__person">
+                  <span class="table__avatar" aria-hidden="true">{{ initials(student) }}</span>
+                  {{ student.first_name }} {{ student.last_name }}
+                </span>
+              </td>
+              <td>
+                <app-presence
+                  [online]="!!student.is_online"
+                  [presentToday]="!!student.is_present_today"
+                  [lastSeen]="student.last_seen_at" />
+              </td>
+              <td class="table__muted">{{ student.username }}</td>
               <td>{{ student.reading_level || '—' }}</td>
-              <td><app-icon name="star" size="sm" /> {{ student.points ?? 0 }}</td>
+              <td class="table__num">
+                <span class="points-pill"><app-icon name="star" size="sm" /> {{ student.points ?? 0 }}</span>
+              </td>
               <td>
                 <app-badge
                   [label]="student.status"
                   [tone]="student.status === 'active' ? 'success' : 'neutral'" />
               </td>
-              <td class="table__right">
+              <td class="table__action">
                 <app-action-menu
                   [items]="rowActions"
                   (selected)="handleAction($event, student)" />
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="table__message">
+                <app-empty-state
+                  icon="search"
+                  title="No pupils match"
+                  message="Try another name, or clear the filters." />
               </td>
             </tr>
           }
         </tbody>
       </table>
     </div>
+
+    <app-table-pager
+      [page]="currentPage()"
+      [perPage]="perPage()"
+      [total]="filteredStudents().length"
+      (pageChange)="page.set($event)"
+      (perPageChange)="setPageSize($event)" />
   }
 </app-card>
 

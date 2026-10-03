@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -22,6 +22,13 @@ import {
   Modal,
   Spinner,
   Icon,
+  TablePager,
+  Presence,
+  PresenceState,
+  presenceOf,
+  pageOf,
+  storedPageSize,
+  storePageSize,
 } from '../../shared/components';
 
 @Component({
@@ -37,12 +44,14 @@ import {
     FormField,
     Modal,
     Spinner,
-    Icon
+    Icon,
+    TablePager,
+    Presence,
   ],
   templateUrl: './students.html',
   styleUrl: './students.scss',
 })
-export class Students implements OnInit {
+export class Students implements OnInit, OnDestroy {
   private studentService = inject(StudentService);
   private badgeService = inject(BadgeService);
   private rewardService = inject(RewardService);
@@ -53,6 +62,76 @@ export class Students implements OnInit {
   private router = inject(Router);
 
   readonly students = signal<Student[]>([]);
+
+  // ---- Table: filters and paging ----
+  readonly search = signal('');
+  readonly levelFilter = signal('');
+  readonly statusFilter = signal('');
+  readonly presenceFilter = signal<'' | PresenceState>('');
+  readonly page = signal(1);
+  readonly perPage = signal(storedPageSize('students', 10));
+
+  /** The reading levels the class actually has, for the level filter. */
+  readonly levels = computed(() =>
+    [...new Set(this.students().map((student) => student.reading_level).filter(Boolean) as string[])].sort(),
+  );
+
+  readonly filtersChanged = computed(
+    () => !!(this.search().trim() || this.levelFilter() || this.statusFilter() || this.presenceFilter()),
+  );
+
+  readonly filteredStudents = computed(() => {
+    const term = this.search().trim().toLowerCase();
+    const level = this.levelFilter();
+    const status = this.statusFilter();
+    const presence = this.presenceFilter();
+
+    return this.students().filter(
+      (student) =>
+        (!term ||
+          `${student.first_name} ${student.last_name} ${student.username}`.toLowerCase().includes(term)) &&
+        (!level || student.reading_level === level) &&
+        (!status || student.status === status) &&
+        (!presence || presenceOf(student) === presence),
+    );
+  });
+
+  /** The page asked for, pulled back if deleting a pupil left it empty. */
+  readonly currentPage = computed(() =>
+    Math.min(this.page(), Math.max(1, Math.ceil(this.filteredStudents().length / this.perPage()))),
+  );
+
+  readonly pagedStudents = computed(() =>
+    pageOf(this.filteredStudents(), this.currentPage(), this.perPage()),
+  );
+
+  /** Any filter change starts again from page 1. */
+  setFilter(filter: 'search' | 'level' | 'status' | 'presence', value: string): void {
+    if (filter === 'presence') {
+      this.presenceFilter.set((value ?? '') as '' | PresenceState);
+    } else {
+      ({ search: this.search, level: this.levelFilter, status: this.statusFilter })[filter].set(value ?? '');
+    }
+    this.page.set(1);
+  }
+
+  clearFilters(): void {
+    this.search.set('');
+    this.levelFilter.set('');
+    this.statusFilter.set('');
+    this.presenceFilter.set('');
+    this.page.set(1);
+  }
+
+  setPageSize(size: number): void {
+    this.perPage.set(size);
+    storePageSize('students', size);
+    this.page.set(1);
+  }
+
+  initials(student: Student): string {
+    return `${student.first_name?.[0] ?? ''}${student.last_name?.[0] ?? ''}`.toUpperCase();
+  }
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly isFormOpen = signal(false);
@@ -98,8 +177,26 @@ export class Students implements OnInit {
   readonly assignLoading = signal(false);
   readonly assignSaving = signal(false);
 
+  /** Re-reads the list now and then, so "Active now" stays true to the room. */
+  private presencePoll: ReturnType<typeof setInterval> | null = null;
+
   ngOnInit(): void {
     this.loadStudents();
+    this.presencePoll = setInterval(() => this.refreshQuietly(), 60000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.presencePoll) {
+      clearInterval(this.presencePoll);
+    }
+  }
+
+  /** The list again, without a spinner over the table the teacher is reading. */
+  private refreshQuietly(): void {
+    this.studentService.list().subscribe({
+      next: (response) => this.students.set(response.data),
+      error: () => {},
+    });
   }
 
   /** Route a chosen dropdown action to its handler. */

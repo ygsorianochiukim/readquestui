@@ -236,3 +236,13 @@ describe('alignScoredWords', () => {
     expect([...pairs.keys()]).toEqual([1]);
   });
 });
+
+describe('tokenize across a page of lines', () => {
+  it('marks the first word of each new line, so the page keeps its layout', () => {
+    const words = tokenize('Celest brings a wasp!\n\nShe puts the jar down.\nWe all gasp!');
+
+    expect(words.map((word) => word.index)).toEqual(words.map((_, position) => position));
+    expect(words.filter((word) => word.newLine).map((word) => word.text)).toEqual(['She', 'We']);
+    expect(words[0].newLine).toBe(false);
+  });
+});

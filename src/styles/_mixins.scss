@@ -12,7 +12,8 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  // A soft lift, plus a thin "base" underneath, as in the student app.
+  box-shadow: 0 3px 0 rgba(31, 35, 51, 0.04), var(--shadow-md);
 }
 
 // A visible, accessible focus outline for keyboard users.

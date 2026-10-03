@@ -7,7 +7,12 @@ export type SoundName =
   | 'page-turn'
   | 'celebrate'
   | 'level-up'
-  | 'tap';
+  | 'tap'
+  | 'yey'
+  | 'yippee'
+  | 'party-popper'
+  | 'reading-wrong'
+  | 'not-passed';
 
 /** Where each cue lives. Files are served from the app's public/ folder. */
 const SOUNDS: Record<SoundName, string> = {
@@ -17,6 +22,16 @@ const SOUNDS: Record<SoundName, string> = {
   celebrate: 'audio/celebrate.mp3',
   'level-up': 'audio/level-up.mp3',
   tap: 'audio/tap.mp3',
+  // Kids cheering "yey!": a chapter activity finished.
+  yey: 'audio/yey.mp3',
+  // "Yippee!": a game won or a quiz passed.
+  yippee: 'audio/yippee.mp3',
+  // The pop that goes with the confetti cannons at the sides of the screen.
+  'party-popper': 'audio/party-popper.mp3',
+  // A reading that fell short of the pass mark.
+  'reading-wrong': 'audio/reading-wrong.mp3',
+  // A quiz or game not passed.
+  'not-passed': 'audio/not-passed.mp3',
 };
 
 const MUSIC_TRACK = 'audio/background.mp3';
