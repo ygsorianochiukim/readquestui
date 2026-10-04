@@ -85,10 +85,10 @@ export class LiveReadingService {
     const scores = this.scores();
 
     return [
-      { key: 'accuracy', label: 'Saying the words', value: scores.accuracy },
-      { key: 'fluency', label: 'Reading smoothly', value: scores.fluency },
-      { key: 'prosody', label: 'Reading with feeling', value: scores.prosody },
-      { key: 'diction', label: 'Speaking clearly', value: scores.diction },
+      { key: 'accuracy', label: 'Accent', value: scores.accuracy },
+      { key: 'fluency', label: 'Fluency', value: scores.fluency },
+      { key: 'prosody', label: 'Intonation', value: scores.prosody },
+      { key: 'diction', label: 'Diction', value: scores.diction },
     ].filter((meter): meter is { key: string; label: string; value: number } => meter.value !== null);
   });
 

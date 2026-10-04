@@ -124,12 +124,12 @@ export class ScoreModal {
     }
 
     return [
-      { label: 'Saying the words', value: attempt.accuracy_score, hint: 'accuracy' },
-      { label: 'Reading smoothly', value: attempt.fluency_score, hint: 'fluency' },
-      { label: 'Reading it all', value: attempt.completeness_score, hint: 'completeness' },
-      { label: 'Reading with feeling', value: attempt.prosody_score, hint: 'intonation' },
+      { label: 'Accent', value: attempt.accuracy_score, hint: 'accuracy' },
+      { label: 'Fluency', value: attempt.fluency_score, hint: 'fluency' },
+      { label: 'Accuracy', value: attempt.completeness_score, hint: 'completeness' },
+      { label: 'Intonation', value: attempt.prosody_score, hint: 'intonation' },
       // Diction: how cleanly each sound of each word came out.
-      { label: 'Speaking clearly', value: attempt.diction_score, hint: 'diction' },
+      { label: 'Diction', value: attempt.diction_score, hint: 'diction' },
     ].filter((dimension) => dimension.value !== null);
   });
 

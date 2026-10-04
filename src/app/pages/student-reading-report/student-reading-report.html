@@ -125,26 +125,26 @@
 
       <div class="dims">
         <div class="dims__row">
-          <span class="dims__label">Saying the words</span>
+          <span class="dims__label">Accent</span>
           <app-progress-bar [percent]="data.summary.average_accuracy ?? 0" />
         </div>
         <div class="dims__row">
-          <span class="dims__label">Reading smoothly</span>
+          <span class="dims__label">Fluency</span>
           <app-progress-bar [percent]="data.summary.average_fluency ?? 0" />
         </div>
         <div class="dims__row">
-          <span class="dims__label">Reading it all</span>
+          <span class="dims__label">Accuracy</span>
           <app-progress-bar [percent]="data.summary.average_completeness ?? 0" />
         </div>
         @if (data.summary.average_prosody; as prosody) {
           <div class="dims__row">
-            <span class="dims__label">Reading with feeling</span>
+            <span class="dims__label">Intonation</span>
             <app-progress-bar [percent]="prosody" />
           </div>
         }
         @if (data.summary.average_diction; as diction) {
           <div class="dims__row" title="Diction: how clearly each sound was said">
-            <span class="dims__label">Speaking clearly</span>
+            <span class="dims__label">Diction</span>
             <app-progress-bar [percent]="diction" />
           </div>
         }
