@@ -24,7 +24,7 @@ const SPOTS = [
   selector: 'app-theme-scenery',
   template: `
     @if (theme(); as current) {
-      <div class="scenery" aria-hidden="true">
+      <div class="scenery" [class.scenery--contained]="contained()" aria-hidden="true">
         @for (piece of pieces(); track $index) {
           <span
             class="scenery__piece"
@@ -44,6 +44,11 @@ const SPOTS = [
       z-index: 0;
       pointer-events: none;
       overflow: hidden;
+    }
+
+    /* Inside one box (the home screen's world) rather than behind the whole screen. */
+    .scenery--contained {
+      position: absolute;
     }
 
     .scenery__piece {
@@ -72,6 +77,8 @@ const SPOTS = [
 })
 export class ThemeScenery {
   readonly theme = input<ReadingTheme | null>(null);
+  /** Fill the nearest positioned box instead of the whole screen. */
+  readonly contained = input(false);
 
   readonly pieces = computed(() => {
     const scenery = this.theme()?.scenery ?? [];

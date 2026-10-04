@@ -149,7 +149,7 @@
       </a>
     }
 
-    <!-- What the child has collected: medals (badges) and stars (points). -->
+    <!-- What the child has collected: medals (badges). Points show on the home screen. -->
     <a
       class="dock__btn dock__btn--stat"
       routerLink="/student/achievements"
@@ -160,16 +160,6 @@
       </span>
       <span class="dock__label">Medals</span>
     </a>
-    <div
-      class="dock__btn dock__btn--stat"
-      role="img"
-      [attr.aria-label]="points() + ' stars'">
-      <span class="dock__sticker">
-        <app-sticker-icon class="dock__icon" name="star" />
-        <span class="dock__count dock__count--star">{{ points() }}</span>
-      </span>
-      <span class="dock__label">Stars</span>
-    </div>
   </nav>
 </div>
 

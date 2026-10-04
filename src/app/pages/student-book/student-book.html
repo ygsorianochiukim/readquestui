@@ -32,6 +32,6 @@
       title="Nothing inside yet"
       message="Your teacher hasn't added chapters to this adventure." />
   } @else {
-    <app-level-map [stops]="stops()" finishIcon="flag-finish" (pick)="open($event.stop.id)" />
+    <app-level-map [stops]="stops()" [theme]="theme()" finishIcon="flag-finish" (pick)="open($event.stop.id)" />
   }
 }

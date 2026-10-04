@@ -9,6 +9,7 @@ import {
   input,
   output,
 } from '@angular/core';
+import { ReadingTheme } from '../../../models/theme/theme.model';
 import { Icon } from '../icon/icon';
 import { IconName } from '../icon/icons';
 import { ProgressBar } from '../progress-bar/progress-bar';
@@ -71,6 +72,7 @@ const FINISH = { x: 50, y: MAP_TOP - 105 };
   imports: [Icon, ProgressBar],
   templateUrl: './level-map.html',
   styleUrl: './level-map.scss',
+  host: { '[attr.data-theme]': 'theme()?.key ?? null' },
 })
 export class LevelMap {
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -78,6 +80,8 @@ export class LevelMap {
 
   readonly stops = input.required<LevelStop[]>();
   readonly finishIcon = input<IconName>('trophy');
+  /** Paint the map in a reading theme; null keeps the green meadow. */
+  readonly theme = input<ReadingTheme | null>(null);
   /** Scroll the current stop into view the first time the stops arrive. */
   readonly autoScroll = input(true);
 

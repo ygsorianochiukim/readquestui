@@ -6,11 +6,12 @@ import { ProgressService } from '../../services/progress/progress';
 import { AchievementService } from '../../services/achievement/achievement';
 import { ReadingPlace, ReadingPlaceService } from '../../services/reading-place/reading-place';
 import { Badge, BookOverview } from '../../models';
-import { Spinner, Icon, Modal, StickerIcon } from '../../shared/components';
+import { themeFor } from '../../models/theme/theme.model';
+import { Spinner, Icon, Modal, StickerIcon, ThemeScenery } from '../../shared/components';
 
 @Component({
   selector: 'app-student-home',
-  imports: [Spinner, Icon, Modal, StickerIcon],
+  imports: [Spinner, Icon, Modal, StickerIcon, ThemeScenery],
   templateUrl: './student-home.html',
   styleUrl: './student-home.scss',
 })
@@ -70,6 +71,9 @@ export class StudentHome implements OnInit {
   readonly continueBook = computed(
     () => this.books().find((book) => !book.is_locked && !book.is_completed) ?? null,
   );
+
+  /** The world on screen is the next book's theme; none keeps the meadow picture. */
+  readonly sceneTheme = computed(() => themeFor(this.continueBook()?.theme));
 
   ngOnInit(): void {
     if (!this.student()) {

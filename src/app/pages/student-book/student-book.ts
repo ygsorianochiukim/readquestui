@@ -28,6 +28,8 @@ export class StudentBook implements OnInit, OnDestroy {
   private progressService = inject(ProgressService);
   private audio = inject(AudioService);
   private themes = inject(ThemeService);
+  /** The reading theme, so the map is painted in it too. */
+  readonly theme = this.themes.active;
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 

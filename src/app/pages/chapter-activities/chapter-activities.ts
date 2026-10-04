@@ -128,6 +128,8 @@ export class ChapterActivities implements OnInit, OnDestroy {
   private celebrationService = inject(CelebrationService);
   private cheers = inject(CheerService);
   private themes = inject(ThemeService);
+  /** The reading theme, so the map is painted in it too. */
+  readonly theme = this.themes.active;
   private pronunciationService = inject(PronunciationService);
   private places = inject(ReadingPlaceService);
   private route = inject(ActivatedRoute);
@@ -728,14 +730,33 @@ export class ChapterActivities implements OnInit, OnDestroy {
     // Only a change seen on this screen is cheered, not the state it opened in.
     const justCompleted = !this.loading() && !wasCompleted && this.completed();
     if (justCompleted) {
-      // A finished chapter: kids cheering, and party poppers at both sides.
-      this.cheers.cheer('congrats', 'Congrats! Chapter complete!', {
-        sound: 'yey',
-        confetti: ['sides', 'drop'],
-      });
+      this.cheerChapterComplete();
     }
 
     return justCompleted;
+  }
+
+  /**
+   * Reading aloud can be the step that finishes the chapter, but its response
+   * carries no chapter progress — only the milestone. True when it did.
+   */
+  private completedByMilestone(celebrations: Celebrations | null | undefined): boolean {
+    const milestone = celebrations?.milestone;
+    if (this.completed() || (milestone !== 'chapter_completed' && milestone !== 'book_completed')) {
+      return false;
+    }
+
+    this.completed.set(true);
+    this.cheerChapterComplete();
+    return true;
+  }
+
+  /** A finished chapter: kids cheering, and party poppers at both sides. */
+  private cheerChapterComplete(): void {
+    this.cheers.cheer('congrats', 'Congrats! Chapter complete!', {
+      sound: 'yey',
+      confetti: ['sides', 'drop'],
+    });
   }
 
   go(step: StepKey): void {
@@ -936,7 +957,9 @@ export class ChapterActivities implements OnInit, OnDestroy {
         this.recordingState.set('idle');
         this.showScore.set(true);
 
-        if (!wasPassed && this.pronunciationPassed() && this.readByPage()) {
+        if (this.completedByMilestone(response.celebrations)) {
+          // The chapter's own cheer has the confetti and the "yey".
+        } else if (!wasPassed && this.pronunciationPassed() && this.readByPage()) {
           // The "Read story" activity done: the same party as a finished chapter.
           this.cheers.cheer('congrats', 'Congrats! You read every page!', {
             sound: 'yey',

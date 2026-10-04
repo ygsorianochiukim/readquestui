@@ -15,7 +15,14 @@
   } @else {
     <!-- World scene -->
     <section class="world">
-      <div class="world__scene">
+      <div
+        class="world__scene"
+        [class.world__scene--themed]="!!sceneTheme()"
+        [style.--sky-1]="sceneTheme()?.sky?.[0] ?? null"
+        [style.--sky-2]="sceneTheme()?.sky?.[1] ?? null"
+        [style.--sky-3]="sceneTheme()?.sky?.[2] ?? null">
+        <!-- The next book's theme replaces the meadow picture. -->
+        <app-theme-scenery [theme]="sceneTheme()" [contained]="true" />
         <div class="world__banner">
           <p class="world__place">{{ continueBook()?.title || 'Reading World' }}</p>
           <p class="world__sub">{{ continueBook()?.reading_level || 'Your adventure awaits' }}</p>

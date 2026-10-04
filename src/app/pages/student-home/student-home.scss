@@ -38,6 +38,10 @@
     box-shadow:
       0 8px 0 rgba(31, 45, 90, 0.18),
       0 18px 34px rgba(20, 40, 90, 0.3);
+
+    &--themed {
+      background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 55%, var(--sky-3) 100%);
+    }
   }
 
   // Location banner, top-centre.

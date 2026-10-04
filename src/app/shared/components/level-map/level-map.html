@@ -19,10 +19,17 @@
   </div>
 
   @for (p of placed(); track p.stop.id) {
-    <span
-      class="map__tree map__tree--{{ p.scenery }}"
-      aria-hidden="true"
-      [style.top.px]="p.y"></span>
+    <!-- The theme's scenery beside each stop, or a round tree in the meadow. -->
+    @if (theme(); as t) {
+      <span class="map__prop map__prop--{{ p.scenery }}" aria-hidden="true" [style.top.px]="p.y">{{
+        t.scenery[$index % t.scenery.length]
+      }}</span>
+    } @else {
+      <span
+        class="map__tree map__tree--{{ p.scenery }}"
+        aria-hidden="true"
+        [style.top.px]="p.y"></span>
+    }
 
     <button
       type="button"

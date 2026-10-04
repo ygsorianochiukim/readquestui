@@ -1,20 +1,63 @@
 @use 'abstracts' as *;
+@use 'sass:list';
 
 // The meadow the road winds through: a strip of sky over grass. Everything is
 // CSS shapes and vector icons — no raster images — so the library's zoom into
 // a stop stays crisp.
 :host {
+  // The meadow by default; a reading theme swaps these for its own world.
+  --map-sky: #bfe4ff;
+  --map-haze: #e7f5ff;
+  --map-ground-1: #b4eaa6;
+  --map-ground-2: #8fdb8f;
+  --map-ground-3: #6cc97a;
+  --map-fleck-1: rgba(255, 255, 255, 0.35);
+  --map-fleck-2: rgba(47, 125, 62, 0.25);
+
   display: block;
   padding: 0 var(--space-3);
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(3px 3px at 20% 30%, rgba(255, 255, 255, 0.35), transparent),
-    radial-gradient(3px 3px at 70% 70%, rgba(47, 125, 62, 0.25), transparent),
-    linear-gradient(180deg, #bfe4ff 0, #e7f5ff 110px, #b4eaa6 190px, #8fdb8f 60%, #6cc97a 100%);
+    radial-gradient(3px 3px at 20% 30%, var(--map-fleck-1), transparent),
+    radial-gradient(3px 3px at 70% 70%, var(--map-fleck-2), transparent),
+    linear-gradient(
+      180deg,
+      var(--map-sky) 0,
+      var(--map-haze) 110px,
+      var(--map-ground-1) 190px,
+      var(--map-ground-2) 60%,
+      var(--map-ground-3) 100%
+    );
   background-size:
     60px 60px,
     60px 60px,
     auto;
+}
+
+// One world per reading theme: sky, then ground from top to bottom, then flecks.
+$map-themes: (
+  jungle: (#a8e6c1, #e3f7e8, #7fd47a, #4fae57, #2f8a43, rgba(255, 255, 255, 0.3), rgba(20, 80, 30, 0.3)),
+  party: (#ffd1e6, #fff1f7, #ffd6e8, #ffb3d4, #ff8fbf, rgba(255, 220, 90, 0.9), rgba(120, 90, 255, 0.5)),
+  halloween: (#24123f, #4a2a7a, #5a3a86, #3d2766, #261845, rgba(255, 150, 50, 0.7), rgba(255, 255, 255, 0.25)),
+  ocean: (#b8ecff, #e0f8ff, #5cc8ef, #2a97d4, #12639f, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.25)),
+  space: (#0b0f2e, #2a1b5f, #3b2b80, #2a1d63, #160f3d, rgba(255, 255, 255, 0.85), rgba(255, 230, 120, 0.6)),
+  candy: (#ffe0f0, #fff6fb, #ffd8ee, #ffbde0, #f6a2d0, rgba(255, 255, 255, 0.8), rgba(120, 200, 255, 0.6)),
+  winter: (#bfdfff, #eef7ff, #ffffff, #e6f1fd, #c9def5, rgba(160, 200, 240, 0.8), rgba(255, 255, 255, 0.9)),
+  farm: (#9fd8f5, #e3f5ff, #d4e88a, #b0d35f, #8bbd45, rgba(255, 230, 90, 0.7), rgba(110, 80, 40, 0.3)),
+  dinosaur: (#f6d39a, #fff0d0, #d9b46a, #b48b48, #8a6532, rgba(255, 240, 200, 0.5), rgba(60, 40, 20, 0.3)),
+  fairytale: (#e5d3ff, #fbf1ff, #dcc6ff, #c4a5f5, #a986e6, rgba(255, 255, 255, 0.8), rgba(255, 200, 240, 0.8)),
+);
+
+@each $name, $c in $map-themes {
+  :host([data-theme='#{$name}']) {
+    --map-sky: #{list.nth($c, 1)};
+    --map-haze: #{list.nth($c, 2)};
+    --map-ground-1: #{list.nth($c, 3)};
+    --map-ground-2: #{list.nth($c, 4)};
+    --map-ground-3: #{list.nth($c, 5)};
+    --map-fleck-1: #{list.nth($c, 6)};
+    --map-fleck-2: #{list.nth($c, 7)};
+  }
 }
 
 .map {
@@ -77,6 +120,24 @@
     box-shadow:
       0 6px 0 #d99a00,
       0 12px 18px rgba(0, 0, 0, 0.2);
+  }
+
+  // A piece of the theme's scenery on the empty side of each stop.
+  &__prop {
+    position: absolute;
+    margin-top: -36px;
+    font-size: 2.6rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.25));
+    pointer-events: none;
+
+    &--left {
+      left: 6%;
+    }
+
+    &--right {
+      right: 6%;
+    }
   }
 
   // A round tree on the empty side of each stop, so the meadow is not bare.

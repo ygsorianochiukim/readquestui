@@ -55,7 +55,7 @@
             <app-spinner label="Finding your place…" />
           } @else {
             <!-- The chapter's own level map: page 1 at the bottom, like books and chapters. -->
-            <app-level-map [stops]="pageStops()" finishIcon="game" (pick)="pickPage($event)" />
+            <app-level-map [stops]="pageStops()" [theme]="theme()" finishIcon="game" (pick)="pickPage($event)" />
           }
 
           @if (pronunciationPassed()) {
