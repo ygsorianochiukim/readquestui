@@ -89,28 +89,46 @@
         }
       </div>
 
+      <!-- On a phone these three fold into one menu button; on a wider screen
+           they sit in the row as they are. -->
       <button
         type="button"
-        class="hud__tool"
-        [attr.aria-pressed]="!muted()"
-        [attr.aria-label]="muted() ? 'Turn sounds on' : 'Turn sounds off'"
-        (click)="toggleMute()">
-        <app-sticker-icon class="hud__tool-icon" [name]="muted() ? 'sound-off' : 'listen'" [color]="muted() ? 'grey' : null" />
-        <span class="hud__tool-label">{{ muted() ? 'Sound off' : 'Sound on' }}</span>
+        class="hud__tool hud__tool--more"
+        [class.hud__tool--on]="moreOpen()"
+        aria-haspopup="true"
+        [attr.aria-expanded]="moreOpen()"
+        aria-label="More: sound, music and log out"
+        (click)="moreOpen.set(!moreOpen())">
+        <app-sticker-icon class="hud__tool-icon" name="menu" color="purple" />
       </button>
-      <button
-        type="button"
-        class="hud__tool"
-        [attr.aria-pressed]="musicEnabled()"
-        [attr.aria-label]="musicEnabled() ? 'Turn music off' : 'Turn music on'"
-        (click)="toggleMusic()">
-        <app-sticker-icon class="hud__tool-icon" name="music" [color]="musicEnabled() && !muted() ? null : 'grey'" />
-        <span class="hud__tool-label">{{ musicEnabled() ? 'Music on' : 'Music off' }}</span>
-      </button>
-      <button type="button" class="hud__tool hud__tool--logout" (click)="logout()">
-        <app-sticker-icon class="hud__tool-icon" name="logout" />
-        <span class="hud__tool-label">Log out</span>
-      </button>
+      @if (moreOpen()) {
+        <div class="hud__more-scrim" (click)="moreOpen.set(false)"></div>
+      }
+
+      <div class="hud__extras" [class.hud__extras--open]="moreOpen()">
+        <button
+          type="button"
+          class="hud__tool"
+          [attr.aria-pressed]="!muted()"
+          [attr.aria-label]="muted() ? 'Turn sounds on' : 'Turn sounds off'"
+          (click)="toggleMute()">
+          <app-sticker-icon class="hud__tool-icon" [name]="muted() ? 'sound-off' : 'listen'" [color]="muted() ? 'grey' : null" />
+          <span class="hud__tool-label">{{ muted() ? 'Sound off' : 'Sound on' }}</span>
+        </button>
+        <button
+          type="button"
+          class="hud__tool"
+          [attr.aria-pressed]="musicEnabled()"
+          [attr.aria-label]="musicEnabled() ? 'Turn music off' : 'Turn music on'"
+          (click)="toggleMusic()">
+          <app-sticker-icon class="hud__tool-icon" name="music" [color]="musicEnabled() && !muted() ? null : 'grey'" />
+          <span class="hud__tool-label">{{ musicEnabled() ? 'Music on' : 'Music off' }}</span>
+        </button>
+        <button type="button" class="hud__tool hud__tool--logout" (click)="logout()">
+          <app-sticker-icon class="hud__tool-icon" name="logout" />
+          <span class="hud__tool-label">Log out</span>
+        </button>
+      </div>
     </div>
   </header>
 

@@ -69,6 +69,8 @@ export class StudentLayout implements OnInit, OnDestroy {
   readonly notificationItems = this.notifications.items;
   readonly unreadCount = this.notifications.unread;
   readonly bellOpen = signal(false);
+  /** The phone menu holding sound, music and log out. */
+  readonly moreOpen = signal(false);
 
   // A playful "player level" derived from points (every 100 pts = 1 level).
   readonly playerLevel = computed(() => Math.floor(this.points() / 100) + 1);
@@ -116,7 +118,10 @@ export class StudentLayout implements OnInit, OnDestroy {
     // Medals and stars stay current as the child earns them on other screens.
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loadRewards());
+      .subscribe(() => {
+        this.loadRewards();
+        this.moreOpen.set(false);
+      });
   }
 
   private loadRewards(): void {

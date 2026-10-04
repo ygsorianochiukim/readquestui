@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnDestroy, OnInit, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, forkJoin, of, Subscription } from 'rxjs';
@@ -410,7 +410,31 @@ export class ChapterActivities implements OnInit, OnDestroy {
         this.audioCues.restoreAfterRecording();
       }
     });
+
+    // Stop and score on its own once the last word is read, so the child does
+    // not have to find the button. A short grace lets the final word's audio in.
+    effect(() => {
+      const done =
+        this.recordingState() === 'recording' &&
+        this.liveAvailable() &&
+        !this.retryTarget() &&
+        this.live.reachedEnd();
+
+      untracked(() => {
+        if (!done || this.autoStopTimer) {
+          return;
+        }
+        this.autoStopTimer = setTimeout(() => {
+          this.autoStopTimer = null;
+          if (this.recordingState() === 'recording') {
+            void this.finishReading();
+          }
+        }, 1200);
+      });
+    });
   }
+
+  private autoStopTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     forkJoin({
@@ -465,6 +489,9 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.queryParams?.unsubscribe();
+    if (this.autoStopTimer) {
+      clearTimeout(this.autoStopTimer);
+    }
     this.stopNarration();
     this.themes.clear();
     // Leaving mid-reading must not leave the music ducked on the next screen.
@@ -1011,15 +1038,8 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
   /** Say one word to the child, slowly. */
   speakWord(word: string): void {
-    try {
-      const utterance = new SpeechSynthesisUtterance(word);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.75;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(utterance);
-    } catch {
-      /* no speech synthesis on this device */
-    }
+    // The narration voice, not the browser's robotic one.
+    void this.narrationService.say(word, 0.8);
   }
 
   dismissScore(): void {
@@ -1284,8 +1304,22 @@ export class ChapterActivities implements OnInit, OnDestroy {
 
   /** Split the story into clean sentences for the word/sentence games. */
   private pickSentences(text: string): string[] {
-    return text
-      .split(/(?<=[.!?])\s+/)
+    // Headings ("Solids") have no full stop, so left in they glue onto the
+    // front of the next sentence. Scanned lines also break mid-sentence, so
+    // only short, unpunctuated lines followed by a capital are dropped.
+    const lines = text.split('\n').map((line) => line.trim());
+    const body = lines
+      .filter((line, i) => {
+        const next = lines.slice(i + 1).find(Boolean) ?? '';
+        const heading =
+          !/[.!?,;:"'”’)]$/.test(line) && line.split(/\s+/).length <= 4 && !/^[a-z]/.test(next);
+        return line && !heading;
+      })
+      .join(' ');
+
+    // A full stop after a title ("Mrs. Post") does not end the sentence.
+    return body
+      .split(/(?<=[.!?]["'”’)]?)(?<!\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|Mt)\.)\s+/)
       .map((sentence) => sentence.replace(/\s+/g, ' ').trim())
       .filter((sentence) => sentence.split(' ').length >= 4);
   }

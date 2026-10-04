@@ -183,6 +183,7 @@
     display: flex;
     align-items: flex-start;
     gap: 6px;
+    position: relative;
   }
 
   // Sticker buttons on a light pod, like the dock's — one row, top right.
@@ -488,5 +489,64 @@
   .game__sun,
   .game__cloud {
     display: none;
+  }
+}
+
+// ---- Sound, music and log out: in the row, or in a menu on a phone --------
+.hud__tool--more,
+.hud__more-scrim {
+  display: none;
+}
+
+// On a wide screen the wrapper is invisible and its buttons sit in the row.
+.hud__extras {
+  display: contents;
+}
+
+@media (max-width: $breakpoint-sm) {
+  // The avatar alone, without the empty space the hidden name left behind.
+  .hud__player { padding: 4px; }
+
+  .hud__tool--more { display: flex; }
+
+  .hud__more-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .hud__extras {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 2;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+    padding: 8px;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 16px 40px rgba(31, 45, 90, 0.3);
+    animation: bell-drop 0.18s ease-out;
+
+    &--open { display: flex; }
+
+    // Menu rows: the sticker, then its words.
+    .hud__tool {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 12px;
+      min-width: 0;
+      padding: 6px 10px;
+      box-shadow: none;
+      font-size: 0.9rem;
+      color: var(--color-text);
+
+      &:hover { background: #f3f6fd; }
+    }
+
+    .hud__tool-label { display: inline; }
   }
 }

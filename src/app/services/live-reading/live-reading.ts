@@ -94,6 +94,18 @@ export class LiveReadingService {
 
   readonly listening = computed(() => this.state() === 'listening');
   readonly score = computed(() => liveScore(this.words()));
+
+  /**
+   * The child has got to the last word, right or wrong. A word only leaves
+   * "pending" once it is heard (or skipped past), so this is the end of the
+   * passage, not a pause.
+   */
+  readonly reachedEnd = computed(() => {
+    const last = this.words()
+      .filter((word) => word.normalized !== '')
+      .at(-1);
+    return !!last && last.state !== 'pending' && last.state !== 'current';
+  });
   readonly missed = computed(() => missedWords(this.words()));
 
   /** Words read correctly so far, for the progress meter. */

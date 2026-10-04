@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AudioService } from '../../../services/audio/audio';
+import { NarrationService } from '../../../services/narration/narration';
 import { Button, Icon, StatusIndicator } from '../../../shared/components';
 
 /** A word to unscramble, and the sentence it came from to help place it. */
@@ -26,6 +27,7 @@ export interface WordChallenge {
 })
 export class WordScramble {
   private audio = inject(AudioService);
+  private narration = inject(NarrationService);
 
   /** Words to unscramble (already chosen by the parent from the story). */
   readonly challenges = input<WordChallenge[]>([]);
@@ -187,15 +189,8 @@ export class WordScramble {
     !!((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition);
 
   private speak(text: string): void {
-    try {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.75;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(utterance);
-    } catch {
-      /* no speech synthesis on this device */
-    }
+    // The narration voice, not the browser's robotic one.
+    void this.narration.say(text, 0.8);
   }
 
   /** Shuffle a word's letters (retries so it differs from the original). */

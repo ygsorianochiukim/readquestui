@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { AudioService } from '../../../services/audio/audio';
+import { NarrationService } from '../../../services/narration/narration';
 import { Button, Icon } from '../../../shared/components';
 
 interface Round {
@@ -21,6 +22,7 @@ interface Round {
 })
 export class MissingWord {
   private audio = inject(AudioService);
+  private narration = inject(NarrationService);
 
   /** Sentences taken from the chapter's story by the parent. */
   readonly sentences = input<string[]>([]);
@@ -93,15 +95,8 @@ export class MissingWord {
   }
 
   private speak(text: string): void {
-    try {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.8;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(utterance);
-    } catch {
-      /* no speech synthesis on this device */
-    }
+    // The narration voice, not the browser's robotic one.
+    void this.narration.say(text, 0.85);
   }
 
   /** Play the sentences again from the start — for fun, once it has been won. */

@@ -235,6 +235,31 @@ export class BookReader implements OnInit, OnDestroy {
     );
   });
 
+  /**
+   * Stop and score on its own once the last word is read, so the child does
+   * not have to find the button. A short grace lets the final word's audio in.
+   */
+  private autoStopTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly autoStop = effect(() => {
+    const done =
+      this.readingState() === 'listening' &&
+      this.liveAvailable() &&
+      !this.retryTarget() &&
+      this.live.reachedEnd();
+
+    untracked(() => {
+      if (!done || this.autoStopTimer) {
+        return;
+      }
+      this.autoStopTimer = setTimeout(() => {
+        this.autoStopTimer = null;
+        if (this.readingState() === 'listening') {
+          void this.finishReading();
+        }
+      }, 1200);
+    });
+  });
+
   ngOnInit(): void {
     this.liveAvailable.set(this.live.isSupported);
 
@@ -296,6 +321,9 @@ export class BookReader implements OnInit, OnDestroy {
   });
 
   ngOnDestroy(): void {
+    if (this.autoStopTimer) {
+      clearTimeout(this.autoStopTimer);
+    }
     this.stopNarration();
     this.themes.clear();
     // Leaving mid-reading must not leave the music ducked on the next screen.
@@ -690,17 +718,8 @@ export class BookReader implements OnInit, OnDestroy {
 
   /** Read one word to the child, using the page's own narration voice. */
   speakWord(word: string): void {
-    // There is no per-word narration endpoint; the browser's own voice is
-    // instant, which matters more here than matching the narrator exactly.
-    try {
-      const utterance = new SpeechSynthesisUtterance(word);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.75;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(utterance);
-    } catch {
-      /* no speech synthesis on this device */
-    }
+    // The narration voice, not the browser's robotic one.
+    void this.narrationService.say(word, 0.8);
   }
 
   // ============================================================
