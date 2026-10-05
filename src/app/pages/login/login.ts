@@ -31,8 +31,26 @@ export class Login {
   };
 
   setMode(mode: AuthMode): void {
+    if (this.mode() !== mode) {
+      this.resetForm();
+    }
     this.mode.set(mode);
     this.errorMessage.set(null);
+  }
+
+  unlock(event: FocusEvent): void {
+    (event.target as HTMLInputElement).readOnly = false;
+  }
+
+  private resetForm(): void {
+    this.form = {
+      first_name: '',
+      last_name: '',
+      phone_number: '',
+      email: '',
+      password: '',
+      password_confirmation: '',
+    };
   }
 
   submit(): void {
